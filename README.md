@@ -29,8 +29,10 @@ This project assumes you will be running it behind a reverse proxy service that 
 - **Form Validation**: Comprehensive validation helpers
 - **Flash Messages**: Session-based notifications system
 - **Templating**: HTML template rendering with data context
+- **TailwindCSS**: Style HTML pages with TailwindCSS
 - **Static File Serving**: Embedded static file handling
 - **Development Mode**: Enhanced debugging with stack traces and additional logging.
+- **Live Reload**: Live reload with [air](https://github.com/air-verse/air).
 
 ## Getting Started
 
@@ -38,6 +40,19 @@ This project assumes you will be running it behind a reverse proxy service that 
 
 - Go 1.22 or higher
 - [Task](https://taskfile.dev/) for project management commands.
+- [Air](https://github.com/air-verse/air) for live reload.
+- [Tailwind CSS](https://tailwindcss.com) for css.
+
+### Tailwind Intallation
+
+Follow the CLI instrutions: https://tailwindcss.com/docs/installation/tailwind-cli
+
+```sh
+# Install Tailwind & plugins
+npm install tailwindcss @tailwindcss/cli
+npm install -D @tailwindcss/forms
+npm install -D @tailwindcss/typography
+```
 
 ### Installation
 
@@ -64,7 +79,7 @@ Basic usage:
 # Run the app
 task run
 
-# Run the app with live reload
+# Run the app with live reload (includes rebuilding tailwind css)
 task run:live
 ```
 
@@ -141,20 +156,31 @@ This pattern is useful for operations like:
 
 - `assets/`: Folder for all project embedded files
   - `emails/`: Email templates
+  - `migrations/`: Database migration files
   - `static/`: Static files like CSS, Javascript, etc
   - `templates/`: Templates to render to HTML pages for the application
     - `pages/`: Main web page content to load, like "home.tmpl" or "about.tmpl"
     - `partials/`: Page partials, like a nav bar, footer, etc
     - `base.tmpl`: Base template for all pages and partials
+  - `efs.go`: Specify assets folders to include in the Go binary build.
+  - `tailwind.css`: Input file for Tailwind css
 - `cmd/`
+  - `hash/`
+    - `hash.go`: CLI tool for hashing passwords with argon2id.
   - `web/`
+    - `helpers.go`: Template, response, and flash message helpers for the application.
+    - `middleware.go`: Middleware used by the application.
+    - `routes.go`: Route configuration & handlers for hte application.
     - `main.go`: Entry point and server configuration
 - `internal/`:
+  - `argon2id/`: Vendored in package of [github.com/alexedwards/argon2id](https://github.com/alexedwards/argon2id)
   - `asserts/`: Testing assert functions
   - `email/`: SMTP email functionality
   - `funcs/`: Template functions
   - `render/`: Template rendering helpers
   - `vcs/`: Version information
+- `.air.toml`: Live reload configuration
+- `Taskfile.yml`: Project tasks ran with `task` prefix.
 
 ### Middleware
 

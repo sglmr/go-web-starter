@@ -19,6 +19,16 @@ import (
 	"github.com/sglmr/gowebstart/internal/email"
 )
 
+const (
+	testUsername     = "test@example.com"
+	testPassword     = "password"
+	testPasswordHash = `$argon2id$v=19$m=65536,t=1,p=8$j0Xx+SUxc9IkZxdAdjH8nQ$YSluZBv02f56eOEMEWZUjJumVi/Z4TB+jd31YiQvxBY`
+)
+
+//=============================================================================
+//	testServer for end to end tests
+//=============================================================================
+
 type testServer struct {
 	*httptest.Server
 }
@@ -66,6 +76,10 @@ func newTestServer(t *testing.T) *testServer {
 
 	return &testServer{ts}
 }
+
+//=============================================================================
+//	helpers for making test http requests
+//=============================================================================
 
 type testResponse struct {
 	statusCode int

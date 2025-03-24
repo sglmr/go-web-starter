@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/sglmr/gowebstart/internal/assert"
-	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
 func TestHealth(t *testing.T) {
@@ -24,8 +23,8 @@ func TestHealth(t *testing.T) {
 	assert.Equal(t, response.header.Get("Content-Type"), "text/plain")
 
 	// Check the body contains "OK"
-	assert.StringContains(t, response.body, "status: OK")
-	assert.StringContains(t, response.body, vcs.Version())
+	assert.StringIn(t, "status: OK", response.body)
+	assert.StringIn(t, "vcs.Version()", response.body)
 }
 
 func TestContactE2E(t *testing.T) {
@@ -44,7 +43,7 @@ func TestContactE2E(t *testing.T) {
 	assert.Equal(t, response.statusCode, http.StatusOK)
 
 	// Check that the body contains the word "contact"
-	assert.StringContains(t, response.body, "Contact")
+	assert.StringIn(t, "Contact", response.body)
 
 	// -------- Test Post without CSRF --------------------
 
@@ -79,5 +78,5 @@ func TestHome(t *testing.T) {
 	response := ts.get(t, "/")
 
 	assert.Equal(t, http.StatusOK, response.statusCode)
-	assert.StringContains(t, response.body, "Example")
+	assert.StringIn(t, "Example", response.body)
 }
