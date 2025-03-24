@@ -1,12 +1,14 @@
 {{define "partial:flashMessages"}}
      <!-- Messages -->
  {{if .Messages}}
- <h3>Messages:</h3>
+ <div class="border-stone-800 bg-stone-100 shadow px-4 py-2 mx-2 my-4">
+ <strong>Messages:</strong>
  <ul>
      {{range .Messages}}
      <li class="message-level-{{.Level}}">{{.Level}}: {{.Message}}</li>
      {{end}}
  </ul>
+</div>
  {{end}}
 {{end}}
 
