@@ -8,6 +8,17 @@ tasks:
     desc: Print available tasks
     cmds:
       - task --list
+
+  tailwind:
+    desc: run tailwind cli
+    cmds:
+      - npx @tailwindcss/cli --input ./assets/tailwind.css --output ./assets/static/css/main.css
+  
+  tailwind:watch:
+    desc: run tailwind cli in watch mode
+    cmds:
+       - npx @tailwindcss/cli --input ./assets/tailwind.css --output ./assets/static/css/main.css --watch
+
   
   tidy:
     desc: Tidy modfiles and format .go files
