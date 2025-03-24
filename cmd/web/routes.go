@@ -24,10 +24,18 @@ func AddRoutes(
 	wg *sync.WaitGroup,
 	sessionManager *scs.SessionManager,
 ) http.Handler {
+	var cacheDuration string
+	switch devMode {
+	case true:
+		cacheDuration = "0"
+	default:
+		cacheDuration = "31536000"
+	}
+
 	// Set up file server for embedded static files
 	// fileserver := http.FileServer(http.FS(assets.EmbeddedFiles))
 	fileServer := http.FileServer(http.FS(staticFileSystem{assets.EmbeddedFiles}))
-	mux.Handle("GET /static/", CacheControlMW("31536000")(fileServer))
+	mux.Handle("GET /static/", CacheControlMW(cacheDuration)(fileServer))
 
 	mux.Handle("GET /", home(logger, devMode, sessionManager))
 	// TODO: Figure out how to wrap this with nosurf
