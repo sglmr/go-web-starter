@@ -6,9 +6,11 @@
     <meta charset='utf-8'>
     <title>{{template "page:title" .}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="/static/images/favicon.ico?v={{.Version}}" type="image/x-icon">
+    <link rel="shortcut icon" href="/static/images/favicon.ico?v={{.Version}}" type="image/x-icon">
     {{block "page:meta" .}}{{end}}
 
-    <link rel='stylesheet' href='/static/css/main.css?version={{.Version}}'>
+    <link rel='stylesheet' href='/static/css/main.css?v={{.Version}}'>
 </head>
 
 <body class="m-auto p-4">
