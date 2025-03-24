@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/alexedwards/scs/v2"
@@ -33,21 +34,18 @@ func AddRoutes(
 	}
 
 	// Set up file server for embedded static files
-	// fileserver := http.FileServer(http.FS(assets.EmbeddedFiles))
 	fileServer := http.FileServer(http.FS(staticFileSystem{assets.EmbeddedFiles}))
 	mux.Handle("GET /static/", CacheControlMW(cacheDuration)(fileServer))
 
+	// Page routes
 	mux.Handle("GET /", home(logger, devMode, sessionManager))
-	// TODO: Figure out how to wrap this with nosurf
-	c := contact(logger, devMode, wg, mailer, sessionManager)
-	mux.Handle("GET /contact/", CsrfMW(c))
-	mux.Handle("POST /contact/", CsrfMW(c))
-	mux.Handle("GET /health/", health())
+	mux.Handle("GET /health/", health(devMode))
+	mux.Handle("GET /contact/", contact(logger, devMode, wg, mailer, sessionManager))
+	mux.Handle("POST /contact/", contact(logger, devMode, wg, mailer, sessionManager))
 	mux.Handle("GET /send-mail", sendEmail(mailer, logger, wg))
-
 	mux.Handle("GET /protected/", BasicAuthMW(username, password, logger)(protected()))
 
-	// Add recoverPanic middleware
+	// Middleware for all routes
 	handler := RecoverPanicMW(mux, logger, devMode)
 	handler = SecureHeadersMW(handler)
 	handler = LogRequestMW(logger)(handler)
@@ -173,11 +171,13 @@ func sendEmail(mailer email.MailerInterface, logger *slog.Logger, wg *sync.WaitG
 }
 
 // health handles a healthcheck response "OK"
-func health() http.HandlerFunc {
+func health(devMode bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Fprintln(w, "status: OK")
+		fmt.Fprintln(w, "devMode:", devMode)
 		fmt.Fprintln(w, "ver: ", vcs.Version())
+		fmt.Fprintln(w, "app name: ", os.Getenv("DOKKU_APP_NAME"))
 	}
 }
 
