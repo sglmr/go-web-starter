@@ -63,13 +63,12 @@ git clone https://github.com/sglmr/gowebstart.git
 cd gowebstart
 ```
 
-2. Replace "gowebstart" with your new project name.
+2. Run `npm install` to download tailwind dependencies.
 
-3. Build the project:
+3. Try `task run:live` to make sure the project runs.
 
-```bash
-task build
-```
+4. Replace "gowebstart" with your new project name.
+
 
 ### Running the Server
 

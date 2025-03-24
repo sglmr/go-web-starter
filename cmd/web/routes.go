@@ -51,6 +51,7 @@ func AddRoutes(
 	handler := RecoverPanicMW(mux, logger, devMode)
 	handler = SecureHeadersMW(handler)
 	handler = LogRequestMW(logger)(handler)
+	handler = CsrfMW(handler)
 	handler = sessionManager.LoadAndSave(handler)
 
 	// Return the handler
