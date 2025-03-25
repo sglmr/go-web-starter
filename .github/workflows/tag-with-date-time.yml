@@ -1,0 +1,22 @@
+name: tag with date-time
+
+on:
+  push:
+    branches:
+      - replace-with-main
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          
+      - name: Create date-time tag
+        run: |
+          # Create tag with format: YYYY-MM-DD-HHMMSS
+          DATE_TIME_TAG=$(date +"%Y-%m-%d-%H%M%S")
+          git tag $DATE_TIME_TAG
+          git push origin $DATE_TIME_TAG
+          echo "Created tag: $DATE_TIME_TAG"

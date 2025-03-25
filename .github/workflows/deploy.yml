@@ -2,7 +2,10 @@
 name: 'push to dokku'
 
 on:
-  push:
+  workflow_run:
+    workflows: ["tag with date-time"]  # Name of the workflow to wait for
+    types:
+      - completed
     branches:
       - replace-with-main
 
@@ -18,6 +21,6 @@ jobs:
       - name: Push to dokku
         uses: dokku/github-action@master
         with:
-          git_remote_url: 'ssh://dokku@${{ secrets.VPS_IP }}:22/${{ vars.APP_NAME }}'
+          git_remote_url: 'ssh://dokku@${{ secrets.DOKKU_VPS_ADDR }}:22/${{ vars.DOKKU_APP_NAME }}'
           branch: main
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          ssh_private_key: ${{ secrets.DOKKU_VPS_PRIVATE_KEY }}
