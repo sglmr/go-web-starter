@@ -43,6 +43,7 @@ func NewMailer(host string, port int, username, password, from string) (*Mailer,
 }
 
 // Send an email to a recipient with data for a specified template name (patterns)
+//   - Reply to is optional and can be blank.
 func (m *Mailer) Send(recipient string, replyTo string, data any, templates ...string) error {
 	// Create a slice from the patterns argument
 	for i := range templates {
@@ -57,9 +58,11 @@ func (m *Mailer) Send(recipient string, replyTo string, data any, templates ...s
 		return err
 	}
 
-	err = msg.ReplyTo(replyTo)
-	if err != nil {
-		return err
+	if len(replyTo) > 0 {
+		err = msg.ReplyTo(replyTo)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = msg.From(m.from)
