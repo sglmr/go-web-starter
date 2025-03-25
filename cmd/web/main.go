@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -82,16 +83,28 @@ func RunApp(
 	devMode := fs.Bool("dev", false, "Development mode. Displays stack trace & more verbose logging")
 	username := fs.String("username", "admin", "Username basic auth")
 	password := fs.String("password", `$2a$10$yIdGuTfOlZEA00kpreh2yuTihYQs9WAjeoIu/81AMWTVt9.Ocef5O`, "Password for basic auth ('password' by default)")
-	smtpHost := fs.String("smtp-host", "", "Email smtp host")
-	smtpPort := fs.Int("smtp-port", 25, "Email smtp port")
-	smtpUsername := fs.String("smtp-username", "", "Email smtp username")
-	smtpPassword := fs.String("smtp-password", "", "Email smtp password")
-	smtpFrom := fs.String("smtp-from", "Eample Name <no-reply@example.com>", "Email smtp Sender")
+	smtpHost := fs.String("smtp-host", os.Getenv("SMTP_HOST"), "Email smtp host")
+	smtpPortString := fs.String("smtp-port", os.Getenv("SMTP_PORT"), "Email smtp port")
+	smtpUsername := fs.String("smtp-username", os.Getenv("SMTP_USERNAME"), "Email smtp username")
+	smtpPassword := fs.String("smtp-password", os.Getenv("SMTP_PASSWORD"), "Email smtp password")
+	smtpFrom := fs.String("smtp-from", os.Getenv("SMTP_EMAIL"), "Email smtp Sender")
 
 	// Parse the flags
 	err := fs.Parse(args[1:])
 	if err != nil {
 		return fmt.Errorf("error parsing flags: %w", err)
+	}
+
+	// Parse the smtp port
+	var smtpPort int
+	switch {
+	case *smtpPortString == "" && *devMode:
+		smtpPort = 0
+	default:
+		smtpPort, err = strconv.Atoi(*smtpPortString)
+		if err != nil {
+			return fmt.Errorf("error parsing smtpPort: %w", err)
+		}
 	}
 
 	// Get port from environment
@@ -120,7 +133,7 @@ func RunApp(
 		mailer = email.NewLogMailer(logger)
 	default:
 		// Configure a mailer to send real emails
-		mailer, err = email.NewMailer(*smtpHost, *smtpPort, *smtpUsername, *smtpPassword, *smtpFrom)
+		mailer, err = email.NewMailer(*smtpHost, smtpPort, *smtpUsername, *smtpPassword, *smtpFrom)
 		if err != nil {
 			logger.Error("smtp configuration error", "error", err)
 			return fmt.Errorf("smtp mailer setup failed: %w", err)
