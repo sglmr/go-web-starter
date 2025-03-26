@@ -50,8 +50,8 @@ func newTestServer(t *testing.T) *testServer {
 	mailer := email.NewLogMailer(logger)
 
 	// Initialize other required vairables for routes
-	username := "test@example.com"
-	password := `$2a$10$yIdGuTfOlZEA00kpreh2yuTihYQs9WAjeoIu/81AMWTVt9.Ocef5O` // 'password'
+	username := testUsername
+	password := testPassword // 'password'
 	wg := sync.WaitGroup{}
 
 	// Create the httpHandler

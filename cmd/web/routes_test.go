@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sglmr/gowebstart/internal/assert"
+	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
 func TestHealth(t *testing.T) {
@@ -24,7 +25,7 @@ func TestHealth(t *testing.T) {
 
 	// Check the body contains "OK"
 	assert.StringIn(t, "status: OK", response.body)
-	assert.StringIn(t, "vcs.Version()", response.body)
+	assert.StringIn(t, vcs.Version(), response.body)
 }
 
 func TestContactE2E(t *testing.T) {
