@@ -35,9 +35,6 @@ type testServer struct {
 
 // newTestServer creates a test server for integration tests.
 func newTestServer(t *testing.T) *testServer {
-	// Create a new serve mux
-	mux := http.NewServeMux()
-
 	// Create an io.Discard logger for testing
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 
@@ -49,13 +46,8 @@ func newTestServer(t *testing.T) *testServer {
 	// Create a test mailer (io.Discard)
 	mailer := email.NewLogMailer(logger)
 
-	// Initialize other required vairables for routes
-	username := testUsername
-	password := testPassword // 'password'
-	wg := sync.WaitGroup{}
-
-	// Create the httpHandler
-	handler := AddRoutes(mux, logger, false, mailer, username, password, &wg, sessionManager)
+	// Create a new handler/server
+	handler := newServer(logger, false, mailer, testUsername, testPasswordHash, &sync.WaitGroup{}, sessionManager)
 
 	// Initialize a new test server
 	ts := httptest.NewTLSServer(handler)

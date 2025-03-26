@@ -36,15 +36,15 @@ func main() {
 	ctx := context.Background()
 
 	// Run the application
-	if err := RunApp(ctx, os.Stdout, os.Args, os.Getenv); err != nil {
+	if err := runApp(ctx, os.Stdout, os.Args, os.Getenv); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 		return
 	}
 }
 
-// NewServer is a constructor that takes in all dependencies as arguments
-func NewServer(
+// newServer is a constructor that takes in all dependencies as arguments
+func newServer(
 	logger *slog.Logger,
 	devMode bool,
 	mailer email.MailerInterface,
@@ -56,13 +56,21 @@ func NewServer(
 	logger.Debug("creating server")
 	mux := http.NewServeMux()
 
-	// Register the home handler for the root route
-	httpHandler := AddRoutes(mux, logger, devMode, mailer, username, password, wg, sessionManager)
+	// Add routes to the ServeMux
+	addRoutes(mux, logger, devMode, mailer, username, password, wg, sessionManager)
 
-	return httpHandler
+	// Middleware for all routes
+	var handler http.Handler = mux
+	handler = recoverPanicMW(handler, logger, devMode)
+	handler = secureHeadersMW(handler)
+	handler = logRequestMW(logger)(handler)
+	handler = csrfMW(handler)
+	handler = sessionManager.LoadAndSave(handler)
+
+	return handler
 }
 
-func RunApp(
+func runApp(
 	ctx context.Context,
 	w io.Writer,
 	args []string,
@@ -145,7 +153,7 @@ func RunApp(
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Set up router
-	srv := NewServer(logger, *devMode, mailer, *username, *password, &wg, sessionManager)
+	srv := newServer(logger, *devMode, mailer, *username, *password, &wg, sessionManager)
 
 	// Configure an http server
 	httpServer := &http.Server{
@@ -198,8 +206,8 @@ func RunApp(
 	return nil
 }
 
-// BackgroundTask executes a function in a background goroutine with proper error handling.
-func BackgroundTask(wg *sync.WaitGroup, logger *slog.Logger, fn func() error) {
+// backgroundTask executes a function in a background goroutine with proper error handling.
+func backgroundTask(wg *sync.WaitGroup, logger *slog.Logger, fn func() error) {
 	// Increment waitgroup to track whether this background task is complete or not
 	wg.Add(1)
 

@@ -56,8 +56,8 @@ func (sfs staticFileSystem) Open(path string) (fs.File, error) {
 	return f, nil
 }
 
-// CacheControlMW sets the Cache-Control header
-func CacheControlMW(age string) func(http.Handler) http.Handler {
+// cacheControlMW sets the Cache-Control header
+func cacheControlMW(age string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%s", age))
@@ -66,13 +66,13 @@ func CacheControlMW(age string) func(http.Handler) http.Handler {
 	}
 }
 
-// RecoverPanicMW recovers from panics to avoid crashing the whole server
-func RecoverPanicMW(next http.Handler, logger *slog.Logger, showTrace bool) http.Handler {
+// recoverPanicMW recovers from panics to avoid crashing the whole server
+func recoverPanicMW(next http.Handler, logger *slog.Logger, showTrace bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			err := recover()
 			if err != nil {
-				ServerError(w, r, fmt.Errorf("%s", err), logger, showTrace)
+				serverError(w, r, fmt.Errorf("%s", err), logger, showTrace)
 			}
 		}()
 
@@ -80,8 +80,8 @@ func RecoverPanicMW(next http.Handler, logger *slog.Logger, showTrace bool) http
 	})
 }
 
-// SecureHeadersMW sets security headers for the whole application
-func SecureHeadersMW(next http.Handler) http.Handler {
+// secureHeadersMW sets security headers for the whole application
+func secureHeadersMW(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Referrer-Policy", "origin-when-cross-origin")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -92,8 +92,8 @@ func SecureHeadersMW(next http.Handler) http.Handler {
 	})
 }
 
-// LogRequestMW logs the http request
-func LogRequestMW(logger *slog.Logger) func(http.Handler) http.Handler {
+// logRequestMW logs the http request
+func logRequestMW(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			var (
@@ -108,8 +108,8 @@ func LogRequestMW(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// CsrfMW protects specific routes against CSRF.
-func CsrfMW(next http.Handler) http.Handler {
+// csrfMW protects specific routes against CSRF.
+func csrfMW(next http.Handler) http.Handler {
 	csrfHandler := nosurf.New(next)
 	csrfHandler.SetBaseCookie(http.Cookie{
 		HttpOnly: true,
@@ -120,7 +120,7 @@ func CsrfMW(next http.Handler) http.Handler {
 }
 
 // BasicAuthMW restricts routes for basic authentication
-func BasicAuthMW(username, passwordHash string, logger *slog.Logger) func(http.Handler) http.Handler {
+func basicAuthMW(username, passwordHash string, logger *slog.Logger) func(http.Handler) http.Handler {
 	authError := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 

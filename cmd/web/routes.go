@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
 
 	"github.com/alexedwards/scs/v2"
@@ -15,27 +14,19 @@ import (
 	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
-// AddRoutes adds all the routes to the mux
-func AddRoutes(
+// addRoutes adds all the routes to the mux
+func addRoutes(
 	mux *http.ServeMux,
 	logger *slog.Logger,
 	devMode bool,
 	mailer email.MailerInterface,
-	username, password string,
+	username, passwordHash string,
 	wg *sync.WaitGroup,
 	sessionManager *scs.SessionManager,
-) http.Handler {
-	var cacheDuration string
-	switch devMode {
-	case true:
-		cacheDuration = "0"
-	default:
-		cacheDuration = "31536000"
-	}
-
+) {
 	// Set up file server for embedded static files
 	fileServer := http.FileServer(http.FS(staticFileSystem{assets.EmbeddedFiles}))
-	mux.Handle("GET /static/", CacheControlMW(cacheDuration)(fileServer))
+	mux.Handle("GET /static/", cacheControlMW("31536000")(fileServer))
 
 	// Page routes
 	mux.Handle("GET /", home(logger, devMode, sessionManager))
@@ -43,17 +34,10 @@ func AddRoutes(
 	mux.Handle("GET /contact/", contact(logger, devMode, wg, mailer, sessionManager))
 	mux.Handle("POST /contact/", contact(logger, devMode, wg, mailer, sessionManager))
 	mux.Handle("GET /send-mail", sendEmail(mailer, logger, wg))
-	mux.Handle("GET /protected/", BasicAuthMW(username, password, logger)(protected()))
 
-	// Middleware for all routes
-	handler := RecoverPanicMW(mux, logger, devMode)
-	handler = SecureHeadersMW(handler)
-	handler = LogRequestMW(logger)(handler)
-	handler = CsrfMW(handler)
-	handler = sessionManager.LoadAndSave(handler)
-
-	// Return the handler
-	return handler
+	// Protected routes
+	protected := basicAuthMW(username, passwordHash, logger)
+	mux.Handle("GET /admin/", protected(admin()))
 }
 
 //=============================================================================
@@ -79,7 +63,7 @@ func home(
 		data := newTemplateData(r, sessionManager)
 
 		if err := render.Page(w, http.StatusOK, data, "home.tmpl"); err != nil {
-			ServerError(w, r, err, logger, showTrace)
+			serverError(w, r, err, logger, showTrace)
 			return
 		}
 	}
@@ -128,13 +112,13 @@ func contact(
 
 			if form.Valid() {
 				// Email the form message
-				BackgroundTask(wg, logger, func() error {
+				backgroundTask(wg, logger, func() error {
 					return mailer.Send("Recipient <recipient@example.com>", "Reply-To <reply-to@example.com>", form, "example.tmpl")
 				})
 				// Render the contact success page
 				err := render.Page(w, http.StatusFound, data, "contact-success.tmpl")
 				if err != nil {
-					ServerError(w, r, err, logger, showTrace)
+					serverError(w, r, err, logger, showTrace)
 					return
 				}
 				return
@@ -148,7 +132,7 @@ func contact(
 		// Render the contact.tmpl page
 		err := render.Page(w, http.StatusOK, data, "contact.tmpl")
 		if err != nil {
-			ServerError(w, r, err, logger, showTrace)
+			serverError(w, r, err, logger, showTrace)
 			return
 		}
 	}
@@ -162,7 +146,7 @@ func sendEmail(mailer email.MailerInterface, logger *slog.Logger, wg *sync.WaitG
 		emailData := map[string]any{
 			"Name": "Person",
 		}
-		BackgroundTask(
+		backgroundTask(
 			wg, logger,
 			func() error {
 				return mailer.Send("Recipient <recipient@example.com>", "Reply-To <reply-to@example.com>", emailData, "example.tmpl")
@@ -177,12 +161,11 @@ func health(devMode bool) http.HandlerFunc {
 		fmt.Fprintln(w, "status: OK")
 		fmt.Fprintln(w, "devMode:", devMode)
 		fmt.Fprintln(w, "ver: ", vcs.Version())
-		fmt.Fprintln(w, "app name: ", os.Getenv("DOKKU_APP_NAME"))
 	}
 }
 
-// protected handles a page protected by basic authentication.
-func protected() http.HandlerFunc {
+// admin handles a page protected by basic authentication.
+func admin() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		fmt.Fprint(w, "You're visiting a protected page!")

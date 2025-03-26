@@ -75,10 +75,10 @@ func putFlashMessage(r *http.Request, level FlashMessageLevel, message string, s
 //	Response Helper functions
 //=============================================================================
 
-// ServerError handles server error http responses.
-func ServerError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger, showTrace bool) {
+// serverError handles server error http responses.
+func serverError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger, showTrace bool) {
 	// TODO: find some way of reporting the server error
-	// app.reportServerError(r, err)
+	// app.reportserverError(r, err)
 
 	message := "The server encountered a problem and could not process your request"
 
