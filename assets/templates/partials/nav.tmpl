@@ -2,7 +2,15 @@
 <nav class="mx-auto flex max-w-xl gap-4">
     <strong>Some Site</strong>
     <a href="/">Home</a>
-    <a href="/contact">Contact</a>
-    <a href="#">Example link</a>
+    <a href="/contact/">Contact</a>
+    <a href="/health/">Health Check</a>
+    <a href="/send-mail/">Send an Email</a>
+    <a href="/basic-auth-required/">BasicAuth Test</a>
+    <a href="/login-required/">Login Test</a>
+    {{if .IsAuthenticated}}
+    <a href="/logout/">Logout</a>
+    {{else}}
+    <a href="/login/">Login</a>
+    {{end}}
 </nav>
 {{end}}

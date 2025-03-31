@@ -11,6 +11,8 @@ import (
 	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
+type contextKey string
+
 //=============================================================================
 //	Template Helpers
 //=============================================================================
@@ -23,9 +25,11 @@ func newTemplateData(r *http.Request, sessionManager *scs.SessionManager) map[st
 	}
 
 	return map[string]any{
-		"CSRFToken": nosurf.Token(r),
-		"Messages":  messages,
-		"Version":   vcs.Version(),
+		"CSRFToken":       nosurf.Token(r),
+		"IsAuthenticated": isAuthenticated(r),
+		"Messages":        messages,
+		"UrlPath":         r.URL.Path,
+		"Version":         vcs.Version(),
 	}
 }
 
@@ -33,27 +37,25 @@ func newTemplateData(r *http.Request, sessionManager *scs.SessionManager) map[st
 //	Flash Message functions
 //=============================================================================
 
-type contextKey string
-
 const flashMessageKey = "messages"
 
-type FlashMessageLevel string
+type flashLevel string
 
 const (
-	// Different FlashMessageLevel types
-	LevelSuccess FlashMessageLevel = "success"
-	LevelError   FlashMessageLevel = "error"
-	LevelWarning FlashMessageLevel = "warning"
-	LevelInfo    FlashMessageLevel = "info"
+	// Different flashLevel types
+	flashInfo    flashLevel = "info"
+	flashSuccess flashLevel = "success"
+	flashWarning flashLevel = "warning"
+	flashError   flashLevel = "error"
 )
 
 type FlashMessage struct {
-	Level   FlashMessageLevel
+	Level   flashLevel
 	Message string
 }
 
 // putFlashMessage adds a flash message into the session manager
-func putFlashMessage(r *http.Request, level FlashMessageLevel, message string, sessionManager *scs.SessionManager) {
+func putFlashMessage(r *http.Request, level flashLevel, message string, sessionManager *scs.SessionManager) {
 	newMessage := FlashMessage{
 		Level:   level,
 		Message: message,
@@ -93,13 +95,26 @@ func serverError(w http.ResponseWriter, r *http.Request, err error, logger *slog
 	http.Error(w, message, http.StatusInternalServerError)
 }
 
-// NotFound handles not found http responses.
-func NotFound(w http.ResponseWriter, r *http.Request) {
-	message := "The requested resource could not be found"
-	http.Error(w, message, http.StatusNotFound)
+// clientError returns a user/client error response
+func clientError(w http.ResponseWriter, status int) {
+	http.Error(w, http.StatusText(status), status)
 }
 
-// BadRequest hadles bad request http responses.
-func BadRequest(w http.ResponseWriter, r *http.Request, err error) {
-	http.Error(w, err.Error(), http.StatusBadRequest)
+//=============================================================================
+// Authentication Helpers
+//=============================================================================
+
+const (
+	isAuthenticatedContextKey = contextKey("isAuthenticated")
+	isAnonyousContextKey      = contextKey("isAnonymous")
+)
+
+// isAuthenticated returns true when a user is authenticated. The function checks the
+// request context for a isAuthenticatedContextKey value
+func isAuthenticated(r *http.Request) bool {
+	isAuthenticated, ok := r.Context().Value(isAuthenticatedContextKey).(bool)
+	if !ok {
+		return false
+	}
+	return isAuthenticated
 }

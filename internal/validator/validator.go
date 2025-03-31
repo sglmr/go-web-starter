@@ -40,7 +40,7 @@ func (v *Validator) AddError(key, message string) {
 }
 
 // Check will add an error message if the the 'ok' argument is false.
-func (v *Validator) Check(ok bool, key, message string) {
+func (v *Validator) Check(key string, ok bool, message string) {
 	if !ok {
 		v.AddError(key, message)
 	}

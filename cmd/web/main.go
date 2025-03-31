@@ -63,9 +63,9 @@ func newServer(
 	var handler http.Handler = mux
 	handler = recoverPanicMW(handler, logger, devMode)
 	handler = secureHeadersMW(handler)
-	handler = logRequestMW(logger)(handler)
-	handler = csrfMW(handler)
+	handler = authenticateMW(sessionManager)(handler)
 	handler = sessionManager.LoadAndSave(handler)
+	handler = logRequestMW(logger)(handler)
 
 	return handler
 }
@@ -89,13 +89,14 @@ func runApp(
 	host := fs.String("host", "0.0.0.0", "Server host")
 	port := fs.String("port", "", "Server port")
 	devMode := fs.Bool("dev", false, "Development mode. Displays stack trace & more verbose logging")
-	username := fs.String("username", "admin", "Username basic auth")
-	password := fs.String("password", `$2a$10$yIdGuTfOlZEA00kpreh2yuTihYQs9WAjeoIu/81AMWTVt9.Ocef5O`, "Password for basic auth ('password' by default)")
-	smtpHost := fs.String("smtp-host", os.Getenv("SMTP_HOST"), "Email smtp host")
-	smtpPortString := fs.String("smtp-port", os.Getenv("SMTP_PORT"), "Email smtp port")
-	smtpUsername := fs.String("smtp-username", os.Getenv("SMTP_USERNAME"), "Email smtp username")
-	smtpPassword := fs.String("smtp-password", os.Getenv("SMTP_PASSWORD"), "Email smtp password")
-	smtpFrom := fs.String("smtp-from", os.Getenv("SMTP_EMAIL"), "Email smtp Sender")
+	username := fs.String("auth-email", getenv("AUTH_EMAIL"), "Email for authentication")
+	password := fs.String("auth-password-hash", getenv("AUTH_PASSWORD_HASH"), "Password hash for authentication")
+	sendEmail := fs.Bool("send-email", false, "Send live emails")
+	smtpHost := fs.String("smtp-host", getenv("SMTP_HOST"), "Email smtp host")
+	smtpPortString := fs.String("smtp-port", getenv("SMTP_PORT"), "Email smtp port")
+	smtpUsername := fs.String("smtp-username", getenv("SMTP_USERNAME"), "Email smtp username")
+	smtpPassword := fs.String("smtp-password", getenv("SMTP_PASSWORD"), "Email smtp password")
+	smtpFrom := fs.String("smtp-from", getenv("SMTP_EMAIL"), "Email smtp Sender")
 
 	// Parse the flags
 	err := fs.Parse(args[1:])
@@ -117,7 +118,7 @@ func runApp(
 
 	// Get port from environment
 	if *port == "" {
-		*port = os.Getenv("PORT")
+		*port = getenv("PORT")
 	}
 	if *port == "" {
 		*port = "8000"
@@ -126,26 +127,25 @@ func runApp(
 	// Create a new logger
 	logLevel := &slog.LevelVar{}
 	logLevel.Set(slog.LevelInfo)
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	logger := slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{
 		Level: logLevel,
 	}))
+	if *devMode {
+		logLevel.Set(slog.LevelDebug)
+	}
 
 	// Create a mailer for sending emails
 	var mailer email.MailerInterface
-	switch {
-	case *devMode:
-		// Change log level to debug
-		logLevel.Set(slog.LevelDebug)
-
-		// Configure email to send to log
-		mailer = email.NewLogMailer(logger)
-	default:
+	switch *sendEmail {
+	case true:
 		// Configure a mailer to send real emails
 		mailer, err = email.NewMailer(*smtpHost, smtpPort, *smtpUsername, *smtpPassword, *smtpFrom)
 		if err != nil {
 			logger.Error("smtp configuration error", "error", err)
 			return fmt.Errorf("smtp mailer setup failed: %w", err)
 		}
+	default:
+		mailer = email.NewLogMailer(logger)
 	}
 
 	// Session manager configuration

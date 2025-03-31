@@ -219,6 +219,9 @@
   .hidden {
     display: none;
   }
+  .table {
+    display: table;
+  }
   .max-w-2xl {
     max-width: var(--container-2xl);
   }

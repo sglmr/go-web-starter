@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	testUsername     = "test@example.com"
+	testEmail        = "test@example.com"
 	testPassword     = "password"
 	testPasswordHash = `$argon2id$v=19$m=65536,t=1,p=8$j0Xx+SUxc9IkZxdAdjH8nQ$YSluZBv02f56eOEMEWZUjJumVi/Z4TB+jd31YiQvxBY`
 )
@@ -47,7 +47,7 @@ func newTestServer(t *testing.T) *testServer {
 	mailer := email.NewLogMailer(logger)
 
 	// Create a new handler/server
-	handler := newServer(logger, false, mailer, testUsername, testPasswordHash, &sync.WaitGroup{}, sessionManager)
+	handler := newServer(logger, false, mailer, testEmail, testPasswordHash, &sync.WaitGroup{}, sessionManager)
 
 	// Initialize a new test server
 	ts := httptest.NewTLSServer(handler)
@@ -163,5 +163,45 @@ func (ts *testServer) post(t *testing.T, path string, data url.Values) testRespo
 		statusCode: response.StatusCode,
 		header:     response.Header,
 		body:       string(body),
+	}
+}
+
+// login will log a user in for testing
+func (ts *testServer) login(t *testing.T) {
+	// Get the login page form to capture the csrf token
+	response := ts.get(t, "/login/")
+	if response.statusCode != http.StatusOK {
+		t.Fatal("could not get login page")
+	}
+
+	// Set up the form data to post to the login page
+	data := url.Values{}
+	data.Set("csrf_token", response.csrfToken(t))
+	data.Set("email", testEmail)
+	data.Set("password", testPassword)
+
+	// Post a login request
+	response = ts.post(t, "/login/", data)
+	if response.statusCode != http.StatusSeeOther {
+		t.Fatal("could not log in")
+	}
+}
+
+// logout will log a user out for testing
+func (ts *testServer) logout(t *testing.T) {
+	// Get the logout page form to capture the csrf token
+	response := ts.get(t, "/logout/")
+	if response.statusCode != http.StatusOK {
+		t.Fatal("could not get logout page")
+	}
+
+	// Set up the form data to post to the login page
+	data := url.Values{}
+	data.Set("csrf_token", response.csrfToken(t))
+
+	// Post a logout request
+	response = ts.post(t, "/logout/", data)
+	if response.statusCode != http.StatusSeeOther {
+		t.Fatal("could not log out")
 	}
 }

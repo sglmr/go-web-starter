@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 
+	"github.com/alexedwards/scs/v2"
 	"github.com/justinas/nosurf"
 	"github.com/sglmr/gowebstart/internal/argon2id"
 )
@@ -153,6 +156,52 @@ func basicAuthMW(username, passwordHash string, logger *slog.Logger) func(http.H
 				return
 			}
 			// Serve the next http request
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// requireLoginMW checks if a user is authenticated, and if not, redirects them to the login page.
+func requireLoginMW() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Redirect to login if the user isn't authenticated
+			if !isAuthenticated(r) {
+				redirectURL := "/login/?next=" + url.QueryEscape(r.RequestURI)
+				http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+				return
+			}
+
+			// Set cache control to no-store so that these pages aren't cached
+			w.Header().Add("Cache-Control", "no-store")
+
+			// Call the next handler
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// authenticateMW sets a context isAuthenticatedContextKey to true if a user is authenticated
+// This middleware can also add user attributes to the request context to reduce queries for user or session data to the database.
+func authenticateMW(sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			authenticated := sessionManager.GetBool(r.Context(), "authenticated")
+			if !authenticated {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// Check that user exists in the database
+			// TODO with database: Not applicable without a users table
+
+			// If the user exists then create a new copy of the request
+			// with the isAuthenticatedContextKey set to true
+			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
+			ctx = context.WithValue(ctx, isAnonyousContextKey, true)
+			r = r.WithContext(ctx)
+
+			// Call the next handler
 			next.ServeHTTP(w, r)
 		})
 	}

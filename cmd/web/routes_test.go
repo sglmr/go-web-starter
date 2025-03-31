@@ -81,3 +81,63 @@ func TestHome(t *testing.T) {
 	assert.Equal(t, http.StatusOK, response.statusCode)
 	assert.StringIn(t, "Example", response.body)
 }
+
+func TestLoginLogout(t *testing.T) {
+	ts := newTestServer(t)
+	defer ts.Close()
+
+	// Test logout unauthorized without login
+	response := ts.get(t, "/logout/")
+	assert.Equal(t, http.StatusSeeOther, response.statusCode)
+
+	// Test login without login
+	response = ts.get(t, "/login/")
+	assert.Equal(t, http.StatusOK, response.statusCode)
+	assert.StringIn(t, `<input type="hidden" name="csrf_token"`, response.body)
+	assert.StringIn(t, `<input type="text" id="email" name="email"`, response.body)
+	assert.StringIn(t, `<input type="password" id="password" name="password"`, response.body)
+	assert.StringNotIn(t, `/logout/`, response.body)
+
+	// Try login with fake username
+	data := url.Values{}
+	data.Set("csrf_token", response.csrfToken(t))
+	data.Set("email", "fake@example.com")
+	data.Set("password", testPassword)
+	response = ts.post(t, "/login/", data)
+	assert.Equal(t, http.StatusUnprocessableEntity, response.statusCode)
+	assert.StringIn(t, "Email or password is incorrect", response.body)
+	assert.StringNotIn(t, "You are in!", response.body)
+
+	// Try login with a fake password
+	data.Set("email", testEmail)
+	data.Set("password", "wrong-password")
+	response = ts.post(t, "/login/", data)
+	assert.Equal(t, http.StatusUnprocessableEntity, response.statusCode)
+	assert.StringIn(t, "Email or password is incorrect", response.body)
+	assert.StringNotIn(t, "You are in!", response.body)
+
+	// Try login with real password and email
+	data.Set("email", testEmail)
+	data.Set("password", testPassword)
+	response = ts.post(t, "/login/", data)
+	assert.Equal(t, http.StatusSeeOther, response.statusCode)
+
+	// Check flash message on next page
+	response = ts.get(t, "/")
+	assert.StringIn(t, "You are in!", response.body)
+	assert.StringNotIn(t, "Email or password is incorrect", response.body)
+
+	// Try logout get after login
+	response = ts.get(t, "/logout/")
+	assert.Equal(t, http.StatusOK, response.statusCode)
+
+	// Try posting logout to log out
+	data = url.Values{}
+	data.Set("csrf_token", response.csrfToken(t))
+	response = ts.post(t, "/logout/", data)
+	assert.Equal(t, http.StatusSeeOther, response.statusCode)
+
+	// Logout get should redirect to login page now
+	response = ts.get(t, "/logout/")
+	assert.Equal(t, http.StatusSeeOther, response.statusCode)
+}
