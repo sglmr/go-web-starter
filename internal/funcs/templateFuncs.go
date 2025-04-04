@@ -24,10 +24,11 @@ var TemplateFuncs = template.FuncMap{
 	"formatTime": formatTime,
 
 	// String functions
-	"uppercase": strings.ToUpper,
-	"lowercase": strings.ToLower,
-	"slugify":   slugify,
-	"safeHTML":  safeHTML,
+	"uppercase":      strings.ToUpper,
+	"lowercase":      strings.ToLower,
+	"slugify":        slugify,
+	"safeHTML":       safeHTML,
+	"stringContains": strings.Contains,
 
 	// Slice functions
 	"join": strings.Join,
@@ -42,6 +43,9 @@ var TemplateFuncs = template.FuncMap{
 	// URL functions
 	"urlSetParam": urlSetParam,
 	"urlDelParam": urlDelParam,
+
+	// generic functions
+
 }
 
 func formatTime(format string, t time.Time) string {
