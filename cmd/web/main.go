@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"reflect"
-	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -20,6 +18,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/sglmr/gowebstart/internal/email"
+	"github.com/sglmr/gowebstart/internal/web"
 )
 
 //=============================================================================
@@ -27,8 +26,8 @@ import (
 //=============================================================================
 
 func init() {
-	gob.Register(FlashMessage{})
-	gob.Register([]FlashMessage{})
+	gob.Register(web.FlashMessage{})
+	gob.Register([]web.FlashMessage{})
 }
 
 func main() {
@@ -41,33 +40,6 @@ func main() {
 		os.Exit(1)
 		return
 	}
-}
-
-// newServer is a constructor that takes in all dependencies as arguments
-func newServer(
-	logger *slog.Logger,
-	devMode bool,
-	mailer email.MailerInterface,
-	username, password string,
-	wg *sync.WaitGroup,
-	sessionManager *scs.SessionManager,
-) http.Handler {
-	// Create a serve mux
-	logger.Debug("creating server")
-	mux := http.NewServeMux()
-
-	// Add routes to the ServeMux
-	addRoutes(mux, logger, devMode, mailer, username, password, wg, sessionManager)
-
-	// Middleware for all routes
-	var handler http.Handler = mux
-	handler = recoverPanicMW(handler, logger, devMode)
-	handler = secureHeadersMW(handler)
-	handler = authenticateMW(sessionManager)(handler)
-	handler = sessionManager.LoadAndSave(handler)
-	handler = logRequestMW(logger)(handler)
-
-	return handler
 }
 
 func runApp(
@@ -153,12 +125,20 @@ func runApp(
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Set up router
-	srv := newServer(logger, *devMode, mailer, *username, *password, &wg, sessionManager)
+	app := web.Application{
+		Log:               logger,
+		DevMode:           *devMode,
+		Email:             mailer,
+		AdminUsername:     *username,
+		AdminPasswordHash: *password,
+		Wg:                &wg,
+		SessionManager:    sessionManager,
+	}
 
 	// Configure an http server
 	httpServer := &http.Server{
 		Addr:         net.JoinHostPort(*host, *port),
-		Handler:      srv,
+		Handler:      app.NewHandler(),
 		ErrorLog:     slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  5 * time.Second,
@@ -204,34 +184,4 @@ func runApp(
 	wg.Wait()
 	logger.Info("application shutdown complete")
 	return nil
-}
-
-// backgroundTask executes a function in a background goroutine with proper error handling.
-func backgroundTask(wg *sync.WaitGroup, logger *slog.Logger, fn func() error) {
-	// Increment waitgroup to track whether this background task is complete or not
-	wg.Add(1)
-
-	// Launch a goroutine to run the task in
-	go func() {
-		// decrement the waitgroup after the task completes
-		defer wg.Done()
-
-		// Get the name of the function
-		funcName := runtime.FuncForPC(reflect.ValueOf(fn).Pointer()).Name()
-
-		// Recover any panics in the task function so that
-		// a panic doesn't kill the whole application
-		defer func() {
-			err := recover()
-			if err != nil {
-				logger.Error("task", "name", funcName, "error", fmt.Errorf("%s", err))
-			}
-		}()
-
-		// Execute the provided function, logging any errors
-		err := fn()
-		if err != nil {
-			logger.Error("task", "name", funcName, "error", err)
-		}
-	}()
 }

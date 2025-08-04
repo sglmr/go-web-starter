@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"context"
@@ -69,18 +69,26 @@ func cacheControlMW(age string) func(http.Handler) http.Handler {
 	}
 }
 
-// recoverPanicMW recovers from panics to avoid crashing the whole server
-func recoverPanicMW(next http.Handler, logger *slog.Logger, showTrace bool) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (app *Application) recoverPanicMW(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			err := recover()
-			if err != nil {
-				serverError(w, r, fmt.Errorf("%s", err), logger, showTrace)
+			if rvr := recover(); rvr != nil {
+				if rvr == http.ErrAbortHandler {
+					// we don't recover http.ErrAbortHandler so the response
+					// to the client is aborted, this should not be logged
+					panic(rvr)
+				}
+
+				if rvr != nil {
+					app.serverError(w, r, fmt.Errorf("%s", rvr))
+				}
 			}
 		}()
 
 		next.ServeHTTP(w, r)
-	})
+	}
+
+	return http.HandlerFunc(fn)
 }
 
 // secureHeadersMW sets security headers for the whole application
@@ -183,10 +191,10 @@ func requireLoginMW() func(http.Handler) http.Handler {
 
 // authenticateMW sets a context isAuthenticatedContextKey to true if a user is authenticated
 // This middleware can also add user attributes to the request context to reduce queries for user or session data to the database.
-func authenticateMW(sessionManager *scs.SessionManager) func(http.Handler) http.Handler {
+func authenticateMW(SessionManager *scs.SessionManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authenticated := sessionManager.GetBool(r.Context(), "authenticated")
+			authenticated := SessionManager.GetBool(r.Context(), "authenticated")
 			if !authenticated {
 				next.ServeHTTP(w, r)
 				return

@@ -1,8 +1,7 @@
-package main
+package web
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
 	"runtime/debug"
 
@@ -18,8 +17,8 @@ type contextKey string
 //=============================================================================
 
 // newTemplateData constructs a map of data to pass into templates
-func newTemplateData(r *http.Request, sessionManager *scs.SessionManager) map[string]any {
-	messages, ok := sessionManager.Pop(r.Context(), "messages").([]FlashMessage)
+func newTemplateData(r *http.Request, SessionManager *scs.SessionManager) map[string]any {
+	messages, ok := SessionManager.Pop(r.Context(), "messages").([]FlashMessage)
 	if !ok {
 		messages = []FlashMessage{}
 	}
@@ -54,23 +53,23 @@ type FlashMessage struct {
 	Message string
 }
 
-// putFlashMessage adds a flash message into the session manager
-func putFlashMessage(r *http.Request, level flashLevel, message string, sessionManager *scs.SessionManager) {
+// Flash adds a flash message into the session manager
+func (app *Application) Flash(r *http.Request, level flashLevel, message string) {
 	newMessage := FlashMessage{
 		Level:   level,
 		Message: message,
 	}
 
 	// Create a new flashMessageKey context key if one doesn't exist and add the message
-	messages, ok := sessionManager.Get(r.Context(), flashMessageKey).([]FlashMessage)
+	messages, ok := app.SessionManager.Get(r.Context(), flashMessageKey).([]FlashMessage)
 	if !ok {
-		sessionManager.Put(r.Context(), flashMessageKey, []FlashMessage{newMessage})
+		app.SessionManager.Put(r.Context(), flashMessageKey, []FlashMessage{newMessage})
 		return
 	}
 
 	// Add a flash message to an existing flashMessageKey context key
 	messages = append(messages, newMessage)
-	sessionManager.Put(r.Context(), flashMessageKey, messages)
+	app.SessionManager.Put(r.Context(), flashMessageKey, messages)
 }
 
 //=============================================================================
@@ -78,19 +77,19 @@ func putFlashMessage(r *http.Request, level flashLevel, message string, sessionM
 //=============================================================================
 
 // serverError handles server error http responses.
-func serverError(w http.ResponseWriter, r *http.Request, err error, logger *slog.Logger, showTrace bool) {
+func (app *Application) serverError(w http.ResponseWriter, r *http.Request, err error) {
 	// TODO: find some way of reporting the server error
 	// app.reportserverError(r, err)
 
 	message := "The server encountered a problem and could not process your request"
 
 	// Display the stack trace on the web page if env is development is on
-	if showTrace {
+	if app.DevMode {
 		body := fmt.Sprintf("%s\n\n%s", err, string(debug.Stack()))
 		http.Error(w, body, http.StatusInternalServerError)
 		return
 	}
-	logger.Error("server error", "status", http.StatusInternalServerError, "error", err)
+	app.Log.Error("server error", "status", http.StatusInternalServerError, "error", err)
 
 	http.Error(w, message, http.StatusInternalServerError)
 }

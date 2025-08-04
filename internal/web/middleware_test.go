@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"bytes"
@@ -93,7 +93,7 @@ func TestRecoverPanicMW(t *testing.T) {
 
 	// Pass the mock HTTP handler to the RecoverPanicMW middleware.
 	// Call ServeHTTP to execute it.
-	recoverPanicMW(next, testLogger, false).ServeHTTP(rr, r)
+	app.recoverPanicMW(next, testLogger, false).ServeHTTP(rr, r)
 
 	// Get the results of the test
 	rs := rr.Result()

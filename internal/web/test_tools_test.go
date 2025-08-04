@@ -1,4 +1,4 @@
-package main
+package web
 
 import (
 	"bytes"
@@ -39,15 +39,15 @@ func newTestServer(t *testing.T) *testServer {
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 
 	// Initialize a new session manager with the cleanup goroutine disabled
-	sessionManager := scs.New()
-	sessionManager.Store = memstore.NewWithCleanupInterval(0)
-	sessionManager.Cookie.Secure = true
+	SessionManager := scs.New()
+	SessionManager.Store = memstore.NewWithCleanupInterval(0)
+	SessionManager.Cookie.Secure = true
 
 	// Create a test mailer (io.Discard)
 	mailer := email.NewLogMailer(logger)
 
 	// Create a new handler/server
-	handler := newServer(logger, false, mailer, testEmail, testPasswordHash, &sync.WaitGroup{}, sessionManager)
+	handler := newServer(logger, false, mailer, testEmail, testPasswordHash, &sync.WaitGroup{}, SessionManager)
 
 	// Initialize a new test server
 	ts := httptest.NewTLSServer(handler)
