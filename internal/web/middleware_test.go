@@ -73,9 +73,12 @@ func TestSecureHeadersMW(t *testing.T) {
 func TestRecoverPanicMW(t *testing.T) {
 	t.Parallel()
 
-	// Create a test logger
+	// Create a test application
 	logBuffer := bytes.Buffer{}
 	testLogger := slog.New(slog.NewTextHandler(&logBuffer, nil))
+	testApp := Application{
+		Log: testLogger,
+	}
 
 	// Initialize a new httptest.ResponseRecorder and dummy http.Request.
 	rr := httptest.NewRecorder()
@@ -93,7 +96,7 @@ func TestRecoverPanicMW(t *testing.T) {
 
 	// Pass the mock HTTP handler to the RecoverPanicMW middleware.
 	// Call ServeHTTP to execute it.
-	app.recoverPanicMW(next, testLogger, false).ServeHTTP(rr, r)
+	testApp.recoverPanicMW(next).ServeHTTP(rr, r)
 
 	// Get the results of the test
 	rs := rr.Result()

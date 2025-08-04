@@ -33,21 +33,36 @@ type testServer struct {
 	*httptest.Server
 }
 
-// newTestServer creates a test server for integration tests.
-func newTestServer(t *testing.T) *testServer {
+// newTestAppliation creates an Appliation struct for testing
+func newTestApplication(t *testing.T) *Application {
 	// Create an io.Discard logger for testing
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 
 	// Initialize a new session manager with the cleanup goroutine disabled
-	SessionManager := scs.New()
-	SessionManager.Store = memstore.NewWithCleanupInterval(0)
-	SessionManager.Cookie.Secure = true
+	sessionManager := scs.New()
+	sessionManager.Store = memstore.NewWithCleanupInterval(0)
+	sessionManager.Cookie.Secure = true
 
-	// Create a test mailer (io.Discard)
-	mailer := email.NewLogMailer(logger)
+	testApp := Application{
+		Log:               logger,
+		DevMode:           false,
+		Email:             email.NewLogMailer(logger),
+		SessionManager:    sessionManager,
+		Wg:                &sync.WaitGroup{},
+		AdminUsername:     testEmail,
+		AdminPasswordHash: testPasswordHash,
+	}
+
+	return &testApp
+}
+
+// newTestServer creates a test server for integration tests.
+func newTestServer(t *testing.T) *testServer {
+	// Create a new test app
+	testApp := newTestApplication(t)
 
 	// Create a new handler/server
-	handler := newServer(logger, false, mailer, testEmail, testPasswordHash, &sync.WaitGroup{}, SessionManager)
+	handler := testApp.NewHandler()
 
 	// Initialize a new test server
 	ts := httptest.NewTLSServer(handler)
