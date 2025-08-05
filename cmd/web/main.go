@@ -116,7 +116,7 @@ func runApp(
 	if *dbPath == "" {
 		*dbPath = "db.sqlite"
 	}
-	database, err := db.NewDatabase(*dbPath)
+	database, err := db.NewDatabaseConnection(*dbPath)
 	if err != nil {
 		return fmt.Errorf("error creating db: %w", err)
 	}
@@ -143,20 +143,11 @@ func runApp(
 
 	// Session manager configuration
 	sessionManager := scs.New()
-	sessionManager.Store = sqlite3store.New(database.Write())
+	sessionManager.Store = sqlite3store.New(database)
 	sessionManager.Lifetime = 24 * time.Hour
 
-	// Set up router
-	app := web.Application{
-		Log:               logger,
-		DevMode:           *devMode,
-		Email:             mailer,
-		AdminUsername:     *username,
-		AdminPasswordHash: *password,
-		Wg:                &wg,
-		SessionManager:    sessionManager,
-		DB:                database,
-	}
+	// Set up the application struct
+	app := web.NewApplication(logger, *devMode, mailer, *username, *password, sessionManager, db.New(database))
 
 	// Configure an http server
 	httpServer := &http.Server{

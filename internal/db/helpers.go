@@ -2,74 +2,42 @@ package db
 
 import (
 	"database/sql"
-	"sync"
+	"net/url"
 	"testing"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// DB holds the database connections and a mutex for writing.
-type DB struct {
-	writeDB *sql.DB
-	readDB  *sql.DB
-	mu      sync.Mutex // Mutex to lock for writes
-}
-
-// NewDatabase returns a new DB instance.
+// NewDatabase returns a new *sql.DB instance.
 // We name it NewDatabase to avoid a conflict with the sqlc-generated New function.
-func NewDatabase(path string) (*DB, error) {
-	// Create a write db
-	writeDB, err := sql.Open("sqlite3", path+"?_journal=WAL")
+func NewDatabaseConnection(path string) (*sql.DB, error) {
+	// Set sqlite pragma options as a query string
+	options := url.Values{}
+	options.Set("_journal_mode", "WAL")
+	options.Set("_synchronous", "NORMAL")
+	options.Set("_mmap_size", "134217728")
+	options.Set("_journal_size_limit", "67108864")
+	options.Set("_cache_size", "-2000")
+	options.Set("_busy_timeout", "5000") // in ms; 5000 = 5 seconds
+	options.Set("_txlock", "immediate")
+	options.Set("_foreign_keys", "true")
+
+	// The connection string to the database
+	dsn := path + "?" + options.Encode()
+
+	// Create a database connection
+	database, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	// Create a read db
-	readDB, err := sql.Open("sqlite3", path+"?_journal=WAL")
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{
-		writeDB: writeDB,
-		readDB:  readDB,
-	}, nil
-}
-
-// Close closes the database connections.
-func (db *DB) Close() {
-	// Lock the mutex to ensure no new writes start while we are closing.
-	db.mu.Lock()
-	defer db.mu.Unlock()
-
-	db.writeDB.Close()
-	db.readDB.Close()
-}
-
-// Write returns the write database connection.
-func (db *DB) Write() *sql.DB {
-	return db.writeDB
-}
-
-// Read returns the read database connection.
-func (db *DB) Read() *sql.DB {
-	return db.readDB
-}
-
-// Lock locks the mutex for writing.
-func (db *DB) Lock() {
-	db.mu.Lock()
-}
-
-// Unlock unlocks the mutex for writing.
-func (db *DB) Unlock() {
-	db.mu.Unlock()
+	return database, nil
 }
 
 // NewTestDatabase creates a new in-memory sqlite database for testing.
-func NewTestDatabase(t *testing.T) (*DB, error) {
+func NewTestDatabase(t *testing.T) (*sql.DB, error) {
 	// Create an in-memory SQLite database
-	db, err := NewDatabase("file::memory:?cache=shared")
+	db, err := NewDatabaseConnection("file::memory:?cache=shared")
 	if err != nil {
 		return nil, err
 	}

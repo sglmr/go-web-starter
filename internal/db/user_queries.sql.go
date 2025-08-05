@@ -9,6 +9,27 @@ import (
 	"context"
 )
 
+const createUser = `-- name: CreateUser :exec
+INSERT INTO users (name, email, password_hash, activated) VALUES (?, ?, ?, ?)
+`
+
+type CreateUserParams struct {
+	Name         string
+	Email        string
+	PasswordHash []byte
+	Activated    bool
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
+	_, err := q.db.ExecContext(ctx, createUser,
+		arg.Name,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Activated,
+	)
+	return err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, created_at, name, email, password_hash, activated FROM users
 WHERE email = ?

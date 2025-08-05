@@ -48,7 +48,7 @@ func newTestApplication(t *testing.T) *Application {
 		DevMode:           false,
 		Email:             email.NewLogMailer(logger),
 		SessionManager:    sessionManager,
-		Wg:                &sync.WaitGroup{},
+		wg:                &sync.WaitGroup{},
 		AdminUsername:     testEmail,
 		AdminPasswordHash: testPasswordHash,
 	}

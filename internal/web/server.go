@@ -21,9 +21,23 @@ type Application struct {
 	DevMode                          bool
 	Email                            email.MailerInterface
 	AdminUsername, AdminPasswordHash string
-	Wg                               *sync.WaitGroup
 	SessionManager                   *scs.SessionManager
-	DB                               *db.DB
+	Queries                          *db.Queries
+	wg                               *sync.WaitGroup
+}
+
+// NewApplication initializes a new Application struct
+func NewApplication(logger *slog.Logger, devMode bool, mailer email.MailerInterface, adminUsername string, adminPasswordHash string, sessionManager *scs.SessionManager, queries *db.Queries) *Application {
+	return &Application{
+		Log:               logger,
+		DevMode:           devMode,
+		Email:             mailer,
+		AdminUsername:     adminUsername,
+		AdminPasswordHash: adminPasswordHash,
+		SessionManager:    sessionManager,
+		Queries:           queries,
+		wg:                &sync.WaitGroup{},
+	}
 }
 
 // NewHandler creates a new htp.Handler with all the middlware and routes configured.
@@ -82,12 +96,12 @@ func (app *Application) NewHandler() http.Handler {
 // Background executes a function in a background goroutine with proper error handling.
 func (app *Application) Background(task func() error) {
 	// Increment waitgroup to track whether this background task is complete or not
-	app.Wg.Add(1)
+	app.wg.Add(1)
 
 	// Launch a goroutine to run the task in
 	go func() {
 		// decrement the waitgroup after the task completes
-		defer app.Wg.Done()
+		defer app.wg.Done()
 
 		// Get the name of the function
 		funcName := runtime.FuncForPC(reflect.ValueOf(task).Pointer()).Name()
