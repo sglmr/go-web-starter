@@ -2,6 +2,9 @@
 
 version: '3'
 
+vars:
+  MIGRATIONS_DIR: internal/db/migrations
+
 tasks:
 
   default:
@@ -64,4 +67,26 @@ tasks:
     desc: Run the application with reloading on file changes
     cmds:
       - air
+
+  migrate:new:
+    desc: Create a new migration file
+    deps: [migrate:install]
+    cmds:
+      - migrate create -ext sql -dir {{.MIGRATIONS_DIR}} -seq {{.CLI_ARGS}}
+
+  migrate:install:
+    desc: Install the migrate CLI
+    cmds:
+      - go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+  sqlc:install:
+    desc: Install the sqlc CLI
+    cmds:
+      - go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+  sqlc:generate:
+    desc: Generate sqlc code
+    deps: [sqlc:install]
+    cmds:
+      - sqlc generate
 

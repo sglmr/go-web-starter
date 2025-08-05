@@ -3,13 +3,16 @@ module github.com/sglmr/gowebstart
 go 1.23.7
 
 require (
+	github.com/alexedwards/scs/sqlite3store v0.0.0-20250417082927-ab20b3feb5e9
 	github.com/alexedwards/scs/v2 v2.8.0
 	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/chi/v5 v5.2.2
+	github.com/golang-migrate/migrate/v4 v4.18.3
 	github.com/justinas/nosurf v1.1.1
+	github.com/mattn/go-sqlite3 v1.14.30
 	github.com/wneessen/go-mail v0.6.2
 	golang.org/x/crypto v0.36.0
-	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
+	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/term v0.30.0
 	golang.org/x/text v0.23.0
 	gotest.tools v2.2.0+incompatible
@@ -17,6 +20,9 @@ require (
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 )

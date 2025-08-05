@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sglmr/gowebstart/assets"
+	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/email"
 )
 
@@ -22,6 +23,7 @@ type Application struct {
 	AdminUsername, AdminPasswordHash string
 	Wg                               *sync.WaitGroup
 	SessionManager                   *scs.SessionManager
+	DB                               *db.DB
 }
 
 // NewHandler creates a new htp.Handler with all the middlware and routes configured.

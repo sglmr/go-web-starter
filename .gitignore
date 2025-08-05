@@ -1,6 +1,8 @@
 .DS_Store
 tmp/
 node_modules/
+*.sqlite3
+*.sqlite
 
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore

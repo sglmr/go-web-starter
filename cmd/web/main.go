@@ -16,7 +16,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
+	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/email"
 	"github.com/sglmr/gowebstart/internal/web"
 )
@@ -69,6 +71,7 @@ func runApp(
 	smtpUsername := fs.String("smtp-username", getenv("SMTP_USERNAME"), "Email smtp username")
 	smtpPassword := fs.String("smtp-password", getenv("SMTP_PASSWORD"), "Email smtp password")
 	smtpFrom := fs.String("smtp-from", getenv("SMTP_EMAIL"), "Email smtp Sender")
+	dbPath := fs.String("db-path", "", "Path to the sqlite database file")
 
 	// Parse the flags
 	err := fs.Parse(args[1:])
@@ -106,6 +109,24 @@ func runApp(
 		logLevel.Set(slog.LevelDebug)
 	}
 
+	// Database
+	if *dbPath == "" {
+		*dbPath = getenv("DB_PATH")
+	}
+	if *dbPath == "" {
+		*dbPath = "db.sqlite"
+	}
+	database, err := db.NewDatabase(*dbPath)
+	if err != nil {
+		return fmt.Errorf("error creating db: %w", err)
+	}
+	defer database.Close()
+
+	// Run migrations
+	if err := db.MigrateUp(*dbPath); err != nil {
+		return fmt.Errorf("error running migrations: %w", err)
+	}
+
 	// Create a mailer for sending emails
 	var mailer email.MailerInterface
 	switch *sendEmail {
@@ -122,6 +143,7 @@ func runApp(
 
 	// Session manager configuration
 	sessionManager := scs.New()
+	sessionManager.Store = sqlite3store.New(database.Write())
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Set up router
@@ -133,6 +155,7 @@ func runApp(
 		AdminPasswordHash: *password,
 		Wg:                &wg,
 		SessionManager:    sessionManager,
+		DB:                database,
 	}
 
 	// Configure an http server

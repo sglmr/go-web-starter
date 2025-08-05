@@ -263,6 +263,12 @@
     outline-style: var(--tw-outline-style);
     outline-width: 1px;
   }
+  .\[migrate\:install\] {
+    migrate: install;
+  }
+  .\[sqlc\:install\] {
+    sqlc: install;
+  }
 }
 @layer base {
   html {
