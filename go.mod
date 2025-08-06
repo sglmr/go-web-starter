@@ -3,6 +3,7 @@ module github.com/sglmr/gowebstart
 go 1.23.7
 
 require (
+	github.com/alecthomas/kong v1.12.1
 	github.com/alexedwards/scs/sqlite3store v0.0.0-20250417082927-ab20b3feb5e9
 	github.com/alexedwards/scs/v2 v2.8.0
 	github.com/go-chi/chi v1.5.5

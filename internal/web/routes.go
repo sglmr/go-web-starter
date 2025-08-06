@@ -207,12 +207,13 @@ func (app *Application) login() http.HandlerFunc {
 
 				data := newTemplateData(r, app.SessionManager)
 				data["Form"] = form
-
 				// re-render the login page
 				if err := render.Page(w, http.StatusUnprocessableEntity, data, "login.tmpl"); err != nil {
 					app.serverError(w, r, err)
 					return
 				}
+
+				return
 			}
 			// Any other error is a server error
 			app.serverError(w, r, err)

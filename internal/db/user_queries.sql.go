@@ -60,3 +60,22 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	)
 	return i, err
 }
+
+const updateUserPasswordByEmail = `-- name: UpdateUserPasswordByEmail :execrows
+UPDATE users
+SET password_hash = ?
+WHERE email = ?
+`
+
+type UpdateUserPasswordByEmailParams struct {
+	PasswordHash []byte
+	Email        string
+}
+
+func (q *Queries) UpdateUserPasswordByEmail(ctx context.Context, arg UpdateUserPasswordByEmailParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserPasswordByEmail, arg.PasswordHash, arg.Email)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}

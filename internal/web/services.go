@@ -16,9 +16,14 @@ var ErrAuthFailed = errors.New("authentication failed")
 // It returns the authenticated user if successful, or an error if authentication fails
 // (e.g., user not found, incorrect password, or other database errors).
 func (app *Application) AuthenticateLogin(ctx context.Context, email, password string) (*db.User, error) {
-	// Start with a dummy user to ensure a constant time comparison on the password
+	dummyHash, err := argon2id.CreateHash("dummyPassword", argon2id.DefaultParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start with a dummy user to ensure a constant time comparison
 	user := db.User{
-		PasswordHash: []byte("dummyPasswordHashBlahBlah"),
+		PasswordHash: []byte(dummyHash),
 	}
 
 	// Query for the user to check if they exist

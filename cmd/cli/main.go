@@ -2,46 +2,33 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"log"
-	"os"
 
+	"github.com/alecthomas/kong"
 	"github.com/sglmr/gowebstart/internal/db"
 )
 
+var CLI struct {
+	CreateUser struct {
+		Email    string `help:"Email for the new user." required:""`
+		Password string `help:"Password for the new user." required:""`
+		DSN      string `help:"Path to database." required:""`
+	} `cmd:"" help:"Creates a new user."`
+}
+
 func main() {
-	// Flags for "create-user" command to create a new user
-	createUserCmd := flag.NewFlagSet("create-user", flag.ExitOnError)
-	emailPtr := createUserCmd.String("email", "", "Email for the new user")
-	passwordPtr := createUserCmd.String("password", "", "Password for the new user")
-	// createUserDsn := createUserCmd.String("dsn", "", "Database connection path")
-
-	if len(os.Args) < 2 {
-		fmt.Println("expected 'create-user' subcommand")
-		os.Exit(1)
-	}
-
-	switch os.Args[1] {
+	ctx := kong.Parse(&CLI)
+	switch ctx.Command() {
 	case "create-user":
-		createUserCmd.Parse(os.Args[2:])
-		if *emailPtr == "" || *passwordPtr == "" {
-			createUserCmd.PrintDefaults()
-			os.Exit(1)
-		}
-		createUser(*emailPtr, *passwordPtr)
+		createUser(CLI.CreateUser.DSN, CLI.CreateUser.Email, CLI.CreateUser.Password)
 	default:
-		fmt.Println("expected 'create-user' subcommand")
-		os.Exit(1)
+		panic(ctx.Command())
 	}
 }
 
-func createUser(email, password string) {
-	dsn := os.Getenv("WEB_DSN")
-	if dsn == "" {
-		log.Fatal("WEB_DSN environment variable not set")
-	}
-
+func createUser(dsn, email, password string) {
+	// Connect to the database
 	database, err := db.NewDatabaseConnection(dsn)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -49,10 +36,12 @@ func createUser(email, password string) {
 	defer database.Close()
 	queries := db.New(database)
 
+	// Create a new user
 	user, err := queries.CreateUserService(context.Background(), email, password)
 	if err != nil {
 		log.Fatalf("failed to create user: %v", err)
 	}
 
-	fmt.Printf("User created successfully with ID: %d and email: %s\n", user.ID, user.Email)
+	// Print success message.
+	fmt.Printf("User created successfully with ID: %d and email: %s", user.ID, user.Email)
 }
