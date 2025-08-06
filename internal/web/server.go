@@ -46,13 +46,12 @@ func (app *Application) NewHandler() http.Handler {
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
+	r.Use(logRequestMW(app.Log))
 	r.Use(app.recoverPanicMW)
 	r.Use(secureHeadersMW)
 	r.Use(middleware.StripSlashes)
 	r.Use(app.SessionManager.LoadAndSave)
 	r.Use(authenticateMW(app.SessionManager))
-	r.Use(logRequestMW(app.Log))
 
 	// Set at imeout value on the request context
 	r.Use(middleware.Timeout(60 * time.Second))

@@ -18,6 +18,7 @@ import (
 
 	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
+	"github.com/lmittmann/tint"
 	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/email"
 	"github.com/sglmr/gowebstart/internal/web"
@@ -102,9 +103,17 @@ func runApp(
 	// Create a new logger
 	logLevel := &slog.LevelVar{}
 	logLevel.Set(slog.LevelInfo)
-	logger := slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{
-		Level: logLevel,
-	}))
+	var logger *slog.Logger
+	if *devMode {
+		logger = slog.New(tint.NewHandler(w, &tint.Options{
+			Level:      slog.LevelDebug,
+			TimeFormat: time.Kitchen,
+		}))
+	} else {
+		logger = slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{
+			Level: logLevel,
+		}))
+	}
 	if *devMode {
 		logLevel.Set(slog.LevelDebug)
 	}
