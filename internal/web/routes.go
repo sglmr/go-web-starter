@@ -1,11 +1,10 @@
 package web
 
 import (
-	"crypto/subtle"
+	"errors"
 	"fmt"
 	"net/http"
 
-	"github.com/sglmr/gowebstart/internal/argon2id"
 	"github.com/sglmr/gowebstart/internal/render"
 	"github.com/sglmr/gowebstart/internal/validator"
 	"github.com/sglmr/gowebstart/internal/vcs"
@@ -144,7 +143,7 @@ func (app *Application) login() http.HandlerFunc {
 		validator.Validator
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get the "next" url parameter for the page to redirect to on successful login
+		// Get the "next" url parameter to redirect to after logging in.
 		nextURL := r.URL.Query().Get("next")
 		app.Log.Debug("login next", "next", nextURL)
 		if len(nextURL) == 0 {
@@ -199,38 +198,24 @@ func (app *Application) login() http.HandlerFunc {
 			return
 		}
 
-		// Check if the email matches and if not, send back to the login page
-		if subtle.ConstantTimeCompare([]byte(app.AdminUsername), []byte(form.Email)) == 0 {
-			app.Flash(r, flashError, "Email or password is incorrect")
+		// Authenticate the user
+		_, err = app.AuthenticateLogin(r.Context(), form.Email, form.Password)
+		if err != nil {
+			// Reload the page with failed login message
+			if errors.Is(err, ErrAuthFailed) {
+				app.Flash(r, flashError, "login failed")
 
-			data := newTemplateData(r, app.SessionManager)
-			data["Form"] = form
+				data := newTemplateData(r, app.SessionManager)
+				data["Form"] = form
 
-			// re-render the login page
-			if err := render.Page(w, http.StatusUnprocessableEntity, data, "login.tmpl"); err != nil {
-				app.serverError(w, r, err)
-				return
+				// re-render the login page
+				if err := render.Page(w, http.StatusUnprocessableEntity, data, "login.tmpl"); err != nil {
+					app.serverError(w, r, err)
+					return
+				}
 			}
-			return
-		}
-
-		// Check whether the hashed pasword for the user and the plain text password provided match
-		match, err := argon2id.ComparePasswordAndHash(form.Password, app.AdminPasswordHash)
-		switch {
-		case err != nil:
+			// Any other error is a server error
 			app.serverError(w, r, err)
-			return
-		case !match:
-			app.Flash(r, flashError, "Email or password is incorrect")
-
-			data := newTemplateData(r, app.SessionManager)
-			data["Form"] = form
-
-			// re-render the login page
-			if err := render.Page(w, http.StatusUnprocessableEntity, data, "login.tmpl"); err != nil {
-				app.serverError(w, r, err)
-				return
-			}
 			return
 		}
 

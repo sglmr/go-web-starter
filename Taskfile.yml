@@ -22,7 +22,6 @@ tasks:
     cmds:
        - npx @tailwindcss/cli --input ./assets/tailwind.css --output ./assets/static/css/main.css --watch
 
-  
   tidy:
     desc: Tidy modfiles and format .go files
     cmds:
