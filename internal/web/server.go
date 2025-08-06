@@ -74,18 +74,11 @@ func (app *Application) NewHandler() http.Handler {
 		r.Post("/login", app.login())
 	})
 
-	// These routes need basic authentication
-	r.Group(func(r chi.Router) {
-		r.Use(csrfMW)
-		r.Use(basicAuthMW(app.AdminUsername, app.AdminPasswordHash, app.Log))
-		r.Get("/basic-auth-required", app.basicAuthDemo())
-	})
-
 	// This route requires login
 	r.Group(func(r chi.Router) {
 		r.Use(csrfMW)
 		r.Use(requireLoginMW())
-		r.Get("/login-required", app.basicAuthDemo())
+		r.Get("/login-required", app.loginRequiredDemo())
 		r.Get("/logout", app.logout())
 		r.Post("/logout", app.logout())
 	})

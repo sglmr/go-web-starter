@@ -12,7 +12,6 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/justinas/nosurf"
-	"github.com/sglmr/gowebstart/internal/argon2id"
 )
 
 //=============================================================================
@@ -78,10 +77,7 @@ func (app *Application) recoverPanicMW(next http.Handler) http.Handler {
 					// to the client is aborted, this should not be logged
 					panic(rvr)
 				}
-
-				if rvr != nil {
-					app.serverError(w, r, fmt.Errorf("%s", rvr))
-				}
+				app.serverError(w, r, fmt.Errorf("%s", rvr))
 			}
 		}()
 
@@ -128,45 +124,6 @@ func csrfMW(next http.Handler) http.Handler {
 		Secure:   true,
 	})
 	return csrfHandler
-}
-
-// BasicAuthMW restricts routes for basic authentication
-func basicAuthMW(username, passwordHash string, logger *slog.Logger) func(http.Handler) http.Handler {
-	authError := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-
-		message := "You must be authenticated to access this resource"
-		http.Error(w, message, http.StatusUnauthorized)
-	})
-
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Get basic auth credentials from the request
-			requestUsername, requestPassword, ok := r.BasicAuth()
-			if !ok {
-				authError(w, r)
-				return
-			}
-
-			// Check if the username matches the request
-			if username != requestUsername {
-				authError(w, r)
-				return
-			}
-
-			match, err := argon2id.ComparePasswordAndHash(requestPassword, passwordHash)
-			if err != nil {
-				logger.Error("ComparePasswordAndHash error", "error", err)
-				authError(w, r)
-				return
-			} else if !match {
-				authError(w, r)
-				return
-			}
-			// Serve the next http request
-			next.ServeHTTP(w, r)
-		})
-	}
 }
 
 // requireLoginMW checks if a user is authenticated, and if not, redirects them to the login page.

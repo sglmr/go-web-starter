@@ -2,10 +2,32 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/sglmr/gowebstart/internal/argon2id"
 )
+
+// ChangeUserPasswordService changes the password(hash) for a user.
+// It takes the context, email, and new plain-text password as input.
+// It returns an error if the password change fails.
+func (q *Queries) ChangeUserPasswordService(ctx context.Context, email, password string) error {
+	hashedPassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
+	if err != nil {
+		return err
+	}
+
+	rowCount, err := q.UpdateUserPasswordByEmail(ctx, UpdateUserPasswordByEmailParams{PasswordHash: []byte(hashedPassword), Email: email})
+	switch {
+	case err != nil:
+		return err
+	case rowCount == 0:
+		return errors.New("no user updated")
+	case rowCount > 1:
+		return errors.New("multiple users updated")
+	}
+	return nil
+}
 
 // CreateUserService creates a new user in the database with a hashed password.
 // It takes the context, email, and plain-text password as input.

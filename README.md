@@ -110,12 +110,6 @@ Example with custom options:
 
 The template includes basic authentication and login/logout functionality.
 
-### Basic Authentication
-
-The project contains a `BasicAuthMW` middleware that you can use to protect the application or specific routes with HTTP basic authentication.
-
-You can try this out by visiting the [http://localhost:8000/basic-auth-required/](http://localhost:8000/basic-auth-required/) endpoint in any web browser and entering the default email and password.
-
 ### Login/Logout System
 
 The application also includes a more user-friendly login and logout system through the web interface.

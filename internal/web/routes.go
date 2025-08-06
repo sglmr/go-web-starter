@@ -118,14 +118,6 @@ func (app *Application) health(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ver: ", vcs.Version())
 }
 
-// basicAuthDemo handles a page protected by basic authentication.
-func (app *Application) basicAuthDemo() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain")
-		fmt.Fprint(w, "You're visiting a a page protected with basic authentication!")
-	}
-}
-
 // loginRequiredDemo handles a page protected by basic authentication.
 func (app *Application) loginRequiredDemo() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
