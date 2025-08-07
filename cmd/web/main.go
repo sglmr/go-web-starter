@@ -64,8 +64,6 @@ func runApp(
 	host := fs.String("host", "0.0.0.0", "Server host")
 	port := fs.String("port", "", "Server port")
 	devMode := fs.Bool("dev", false, "Development mode. Displays stack trace & more verbose logging")
-	username := fs.String("auth-email", getenv("AUTH_EMAIL"), "Email for authentication")
-	password := fs.String("auth-password-hash", getenv("AUTH_PASSWORD_HASH"), "Password hash for authentication")
 	sendEmail := fs.Bool("send-email", false, "Send live emails")
 	smtpHost := fs.String("smtp-host", getenv("SMTP_HOST"), "Email smtp host")
 	smtpPortString := fs.String("smtp-port", getenv("SMTP_PORT"), "Email smtp port")
@@ -156,7 +154,7 @@ func runApp(
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Set up the application struct
-	app := web.NewApplication(logger, *devMode, mailer, *username, *password, sessionManager, db.New(database))
+	app := web.NewApplication(logger, *devMode, mailer, sessionManager, db.New(database))
 
 	// Configure an http server
 	httpServer := &http.Server{

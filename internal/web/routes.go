@@ -74,7 +74,7 @@ func (app *Application) contact() http.HandlerFunc {
 					return app.Email.Send("Recipient <recipient@example.com>", "Reply-To <reply-to@example.com>", form, "example.tmpl")
 				})
 				// Render the contact success page
-				err := render.Page(w, http.StatusFound, data, "contact-success.tmpl")
+				err := render.Page(w, http.StatusSeeOther, data, "contact-success.tmpl")
 				if err != nil {
 					app.serverError(w, r, err)
 					return

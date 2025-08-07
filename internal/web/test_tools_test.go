@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"html"
 	"io"
 	"log/slog"
@@ -16,13 +17,13 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/alexedwards/scs/v2/memstore"
+	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/email"
 )
 
 const (
-	testEmail        = "test@example.com"
-	testPassword     = "password"
-	testPasswordHash = `$argon2id$v=19$m=65536,t=1,p=8$j0Xx+SUxc9IkZxdAdjH8nQ$YSluZBv02f56eOEMEWZUjJumVi/Z4TB+jd31YiQvxBY`
+	testEmail    = "admin@example.com"
+	testPassword = "secret"
 )
 
 //=============================================================================
@@ -43,14 +44,19 @@ func newTestApplication(t *testing.T) *Application {
 	sessionManager.Store = memstore.NewWithCleanupInterval(0)
 	sessionManager.Cookie.Secure = true
 
+	// Initialize a test database
+	database, err := db.NewTestDatabase(t, context.Background())
+	if err != nil {
+		t.Error(err)
+	}
+
 	testApp := Application{
-		Log:               logger,
-		DevMode:           false,
-		Email:             email.NewLogMailer(logger),
-		SessionManager:    sessionManager,
-		wg:                &sync.WaitGroup{},
-		AdminUsername:     testEmail,
-		AdminPasswordHash: testPasswordHash,
+		Log:            logger,
+		DevMode:        false,
+		Email:          email.NewLogMailer(logger),
+		SessionManager: sessionManager,
+		wg:             &sync.WaitGroup{},
+		Queries:        db.New(database),
 	}
 
 	return &testApp

@@ -172,3 +172,31 @@ func authenticateMW(SessionManager *scs.SessionManager) func(http.Handler) http.
 		})
 	}
 }
+
+// trailingSlashMiddleware redirects paths without a trailing slash to their trailing-slash equivalent.
+// it does not redirect to a trailing slash when:
+//  1. If the path is the root "/"
+//  2. If the path already has a trailing slash
+//  3. If the path starts with "/static/"
+func trailingSlashMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the current request path.
+		path := r.URL.Path
+
+		// Check for the conditions where we should NOT redirect.
+		// 1. If the path is the root "/".
+		// 2. If the path already has a trailing slash.
+		// 3. If the path starts with "/static/".
+		if path != "/" && !strings.HasSuffix(path, "/") && !strings.HasPrefix(path, "/static/") {
+			// Construct the new URL with a trailing slash.
+			newPath := path + "/"
+
+			// Perform a 301 Permanent Redirect.
+			http.Redirect(w, r, newPath, http.StatusMovedPermanently)
+			return // Stop further processing.
+		}
+
+		// If no redirect is needed, pass the request to the next handler.
+		next.ServeHTTP(w, r)
+	})
+}

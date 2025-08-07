@@ -17,26 +17,28 @@ import (
 )
 
 type Application struct {
-	Log                              *slog.Logger
-	DevMode                          bool
-	Email                            email.MailerInterface
-	AdminUsername, AdminPasswordHash string
-	SessionManager                   *scs.SessionManager
-	Queries                          *db.Queries
-	wg                               *sync.WaitGroup
+	Log            *slog.Logger
+	DevMode        bool
+	Email          email.MailerInterface
+	SessionManager *scs.SessionManager
+	Queries        *db.Queries
+	wg             *sync.WaitGroup
 }
 
 // NewApplication initializes a new Application struct
-func NewApplication(logger *slog.Logger, devMode bool, mailer email.MailerInterface, adminUsername string, adminPasswordHash string, sessionManager *scs.SessionManager, queries *db.Queries) *Application {
+func NewApplication(logger *slog.Logger,
+	devMode bool,
+	mailer email.MailerInterface,
+	sessionManager *scs.SessionManager,
+	queries *db.Queries,
+) *Application {
 	return &Application{
-		Log:               logger,
-		DevMode:           devMode,
-		Email:             mailer,
-		AdminUsername:     adminUsername,
-		AdminPasswordHash: adminPasswordHash,
-		SessionManager:    sessionManager,
-		Queries:           queries,
-		wg:                &sync.WaitGroup{},
+		Log:            logger,
+		DevMode:        devMode,
+		Email:          mailer,
+		SessionManager: sessionManager,
+		Queries:        queries,
+		wg:             &sync.WaitGroup{},
 	}
 }
 
@@ -48,8 +50,8 @@ func (app *Application) NewHandler() http.Handler {
 	r.Use(middleware.RealIP)
 	r.Use(logRequestMW(app.Log))
 	r.Use(app.recoverPanicMW)
+	r.Use(trailingSlashMiddleware)
 	r.Use(secureHeadersMW)
-	r.Use(middleware.StripSlashes)
 	r.Use(app.SessionManager.LoadAndSave)
 	r.Use(authenticateMW(app.SessionManager))
 
@@ -58,28 +60,31 @@ func (app *Application) NewHandler() http.Handler {
 
 	// Set up file server for embedded static files
 	fileServer := http.FileServer(http.FS(staticFileSystem{assets.EmbeddedFiles}))
-	r.With(cacheControlMW("31536000")).Mount("/static/", fileServer)
+	r.Group(func(r chi.Router) {
+		r.Use(cacheControlMW("31536000"))
+		r.Mount("/static", fileServer)
+	})
 
 	r.Get("/", app.home)
-	r.Get("/health", app.health)
-	r.Get("/send-mail", app.sendEmail)
+	r.Get("/health/", app.health)
+	r.Get("/send-mail/", app.sendEmail)
 
 	// These routes need CSRF
 	r.Group(func(r chi.Router) {
 		r.Use(csrfMW)
-		r.Get("/contact", app.contact())
-		r.Post("/contact", app.contact())
-		r.Get("/login", app.login())
-		r.Post("/login", app.login())
+		r.Get("/contact/", app.contact())
+		r.Post("/contact/", app.contact())
+		r.Get("/login/", app.login())
+		r.Post("/login/", app.login())
 	})
 
 	// This route requires login
 	r.Group(func(r chi.Router) {
 		r.Use(csrfMW)
 		r.Use(requireLoginMW())
-		r.Get("/login-required", app.loginRequiredDemo())
-		r.Get("/logout", app.logout())
-		r.Post("/logout", app.logout())
+		r.Get("/login-required/", app.loginRequiredDemo())
+		r.Get("/logout/", app.logout())
+		r.Post("/logout/", app.logout())
 	})
 
 	return r
