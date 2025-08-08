@@ -12,9 +12,7 @@ import (
 
 type contextKey string
 
-//=============================================================================
-//	Template Helpers
-//=============================================================================
+//	Template functions
 
 // newTemplateData constructs a map of data to pass into templates
 func newTemplateData(r *http.Request, SessionManager *scs.SessionManager) map[string]any {
@@ -32,9 +30,7 @@ func newTemplateData(r *http.Request, SessionManager *scs.SessionManager) map[st
 	}
 }
 
-//=============================================================================
-//	Flash Message functions
-//=============================================================================
+//	FlashMessage functions
 
 const flashMessageKey = "messages"
 
@@ -53,7 +49,7 @@ type FlashMessage struct {
 	Message string
 }
 
-// Flash adds a flash message into the session manager
+// Flash adds a flash message to the session
 func (app *Application) Flash(r *http.Request, level flashLevel, message string) {
 	newMessage := FlashMessage{
 		Level:   level,
@@ -72,9 +68,7 @@ func (app *Application) Flash(r *http.Request, level flashLevel, message string)
 	app.SessionManager.Put(r.Context(), flashMessageKey, messages)
 }
 
-//=============================================================================
 //	Response Helper functions
-//=============================================================================
 
 // serverError handles server error http responses.
 func (app *Application) serverError(w http.ResponseWriter, r *http.Request, err error) {
@@ -99,9 +93,7 @@ func clientError(w http.ResponseWriter, status int) {
 	http.Error(w, http.StatusText(status), status)
 }
 
-//=============================================================================
 // Authentication Helpers
-//=============================================================================
 
 const (
 	isAuthenticatedContextKey = contextKey("isAuthenticated")

@@ -27,9 +27,7 @@ type MailerInterface interface {
 	SendWithAttachment(recipient, replyTo string, data any, attachment Attachment, templates ...string) error
 }
 
-//=============================================================================
 //	Email Mailer
-//=============================================================================
 
 // Mailer that sends SMTP emails
 type Mailer struct {
@@ -217,9 +215,7 @@ func (m *Mailer) SendWithAttachment(
 	return err
 }
 
-//=============================================================================
 //	Log Mailer
-//=============================================================================
 
 // LogMailer object for logging emails instead of sending them
 type LogMailer struct {

@@ -26,9 +26,7 @@ const (
 	testPassword = "password"
 )
 
-//=============================================================================
 //	testServer for end to end tests
-//=============================================================================
 
 type testServer struct {
 	*httptest.Server
@@ -87,9 +85,7 @@ func newTestServer(t *testing.T) *testServer {
 	return &testServer{ts}
 }
 
-//=============================================================================
 //	helpers for making test http requests
-//=============================================================================
 
 type testResponse struct {
 	statusCode int

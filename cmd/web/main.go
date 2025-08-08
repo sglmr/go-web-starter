@@ -23,9 +23,7 @@ import (
 	"github.com/sglmr/gowebstart/internal/web"
 )
 
-//=============================================================================
 // Top level application functions
-//=============================================================================
 
 func main() {
 	// Get the background context to pass through the application

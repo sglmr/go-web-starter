@@ -14,9 +14,7 @@ import (
 	"github.com/justinas/nosurf"
 )
 
-//=============================================================================
 // Middleware functions
-//=============================================================================
 
 // staticFileSystem is a custom type that embeds the standard http.FileSystem for serving static files
 type staticFileSystem struct {

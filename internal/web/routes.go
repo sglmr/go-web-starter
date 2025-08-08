@@ -11,9 +11,7 @@ import (
 	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
-//=============================================================================
 //	Routes/Views/HTTP handlers
-//=============================================================================
 
 // home handles the root route
 func (app *Application) home(w http.ResponseWriter, r *http.Request) {
