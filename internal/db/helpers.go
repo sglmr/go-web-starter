@@ -3,7 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -43,30 +45,46 @@ func NewDatabaseConnection(path string) (*sql.DB, error) {
 }
 
 // NewTestDatabase creates a new in-memory sqlite database for testing.
-func NewTestDatabase(t *testing.T, ctx context.Context) (*sql.DB, error) {
-	// Create an in-memory SQLite database
-	db, err := NewDatabaseConnection("file::memory:?cache=shared")
+func NewTestDatabase(t *testing.T, ctx context.Context) *sql.DB {
+	// This connection string will be unique for each test that creates a database.
+	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", t.Name()))
 	if err != nil {
-		return nil, err
+		t.Fatalf("could not create temp databse file")
+	}
+
+	dsn := fmt.Sprintf("%s?mode=memory&cache=shared", tempFile.Name())
+
+	// Create an in-memory SQLite database
+	db, err := NewDatabaseConnection(dsn)
+	if err != nil {
+		t.Fatalf("test database connection failed: %v", err)
 	}
 
 	// Register a function to automatically cleanup after
 	// this function's caller is finished.
 	t.Cleanup(func() {
-		// This would perform down migrations
-		// and any cleanup activities if we weren't using an in-memory database.
+		// Perform down migration. The down migraton
+		// should delete any test data that was created.
+		if err := MigrateDown(dsn); err != nil {
+			t.Fatalf("could not perform down migration")
+		}
+
+		// Delete the temp file that was created
+		if err := os.Remove(tempFile.Name()); err != nil {
+			t.Fatalf("could not delete test database file")
+		}
 	})
 
-	// Run migrations
+	// Run up migrations
 	// Note: The dbPath for migrations still needs to be the connection string.
-	if err := MigrateUp("file::memory:?cache=shared"); err != nil {
-		return nil, err
+	if err := MigrateUp(dsn); err != nil {
+		t.Fatalf("test database migration up failed: %v", err)
 	}
 
 	// Seed the test database with data
 	loadTestData(t, ctx, db)
 
-	return db, nil
+	return db
 }
 
 func loadTestData(t *testing.T, ctx context.Context, db *sql.DB) error {

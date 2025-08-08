@@ -23,7 +23,7 @@ import (
 
 const (
 	testEmail    = "admin@example.com"
-	testPassword = "secret"
+	testPassword = "password"
 )
 
 //=============================================================================
@@ -45,10 +45,7 @@ func newTestApplication(t *testing.T) *Application {
 	sessionManager.Cookie.Secure = true
 
 	// Initialize a test database
-	database, err := db.NewTestDatabase(t, context.Background())
-	if err != nil {
-		t.Error(err)
-	}
+	database := db.NewTestDatabase(t, context.Background())
 
 	testApp := Application{
 		Log:            logger,

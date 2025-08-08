@@ -11,6 +11,8 @@ import (
 )
 
 func TestHome(t *testing.T) {
+	t.Parallel()
+
 	ts := newTestServer(t)
 	defer ts.Close()
 
@@ -33,6 +35,8 @@ func TestHome(t *testing.T) {
 }
 
 func TestHealth(t *testing.T) {
+	t.Parallel()
+
 	ts := newTestServer(t)
 	defer ts.Close()
 
@@ -60,6 +64,8 @@ func TestHealth(t *testing.T) {
 }
 
 func TestContactGet(t *testing.T) {
+	t.Parallel()
+
 	ts := newTestServer(t)
 	defer ts.Close()
 
@@ -84,6 +90,8 @@ func TestContactGet(t *testing.T) {
 }
 
 func TestContactPost(t *testing.T) {
+	t.Parallel()
+
 	// Create a new test server
 	ts := newTestServer(t)
 	defer ts.Close()
@@ -119,6 +127,8 @@ func TestContactPost(t *testing.T) {
 }
 
 func TestLoginLogout(t *testing.T) {
+	t.Parallel()
+
 	successMessage := "You are in!"
 
 	ts := newTestServer(t)
@@ -175,7 +185,7 @@ func TestLoginLogout(t *testing.T) {
 	response = ts.post(t, "/login/", data)
 
 	// Fake username should not work
-	if got, want := response.statusCode, http.StatusUnprocessableEntity; got != want {
+	if got, want := response.statusCode, http.StatusUnauthorized; got != want {
 		t.Fatalf("/login/ fake username statusCode was %v, want %v", got, want)
 	}
 	// There should be an error flash message
@@ -193,7 +203,7 @@ func TestLoginLogout(t *testing.T) {
 	response = ts.post(t, "/login/", data)
 
 	// Fake password should not work
-	if got, want := response.statusCode, http.StatusUnprocessableEntity; got != want {
+	if got, want := response.statusCode, http.StatusUnauthorized; got != want {
 		t.Fatalf("/login/ fake password statusCode was %v, want %v", got, want)
 	}
 	// There should be an error flash message
@@ -206,8 +216,8 @@ func TestLoginLogout(t *testing.T) {
 	}
 
 	// Try login with real password and email
-	data.Set("admin@example.com", testEmail)
-	data.Set("secret", testPassword)
+	data.Set("email", testEmail)
+	data.Set("password", testPassword)
 	response = ts.post(t, "/login/", data)
 	if got, want := response.statusCode, http.StatusSeeOther; got != want {
 		t.Fatalf("/login/ real creds statusCode was %v, want %v", got, want)

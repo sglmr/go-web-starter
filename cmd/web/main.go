@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"flag"
 	"fmt"
 	"io"
@@ -27,11 +26,6 @@ import (
 //=============================================================================
 // Top level application functions
 //=============================================================================
-
-func init() {
-	gob.Register(web.FlashMessage{})
-	gob.Register([]web.FlashMessage{})
-}
 
 func main() {
 	// Get the background context to pass through the application

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -46,5 +47,47 @@ func (q *Queries) CreateUserService(ctx context.Context, email, password string)
 		return nil, fmt.Errorf("failed to create user in database: %w", err)
 	}
 
+	return &user, nil
+}
+
+var ErrAuthFailed = errors.New("authentication failed")
+
+// AuthenticateLogin authenticates a user's login credentials.
+// It takes the context, email, and password as input.
+// It returns the authenticated user if successful, or an error if authentication fails
+// (e.g., user not found, incorrect password, or other database errors).
+func (q *Queries) AuthenticateLogin(ctx context.Context, email, password string) (*User, error) {
+	dummyHash, err := argon2id.CreateHash("dummyPassword", argon2id.DefaultParams)
+	if err != nil {
+		return nil, err
+	}
+
+	// Start with a dummy user to ensure a constant time comparison
+	user := User{
+		PasswordHash: []byte(dummyHash),
+	}
+
+	// Query for the user to check if they exist
+	foundUser, err := q.GetUserByEmail(ctx, email)
+	if err != nil {
+		// Return when the error is not sql.ErrNoRows
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		// Continue for an ErrNoRows to avoid timing attacks.
+	} else {
+		user = foundUser
+	}
+
+	// Compare the user's hashed password with the password
+	match, err := argon2id.ComparePasswordAndHash(password, string(user.PasswordHash))
+	if err != nil {
+		return nil, err
+	}
+	if !match {
+		return nil, ErrAuthFailed
+	}
+
+	// Return the user
 	return &user, nil
 }

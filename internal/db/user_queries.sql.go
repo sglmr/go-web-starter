@@ -61,6 +61,26 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, name, email, password_hash, activated
+FROM users
+WHERE id = ?
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.Name,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Activated,
+	)
+	return i, err
+}
+
 const updateUserPasswordByEmail = `-- name: UpdateUserPasswordByEmail :execrows
 UPDATE users
 SET password_hash = ?

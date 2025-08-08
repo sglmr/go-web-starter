@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/render"
 	"github.com/sglmr/gowebstart/internal/validator"
 	"github.com/sglmr/gowebstart/internal/vcs"
@@ -135,15 +136,8 @@ func (app *Application) login() http.HandlerFunc {
 		validator.Validator
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Get the "next" url parameter to redirect to after logging in.
-		nextURL := r.URL.Query().Get("next")
-		app.Log.Debug("login next", "next", nextURL)
-		if len(nextURL) == 0 {
-			// Set to home if there was not next url
-			nextURL = "/"
-		}
-
-		// Render form for a GET request
+		// GET request response.
+		// Render the login page with an empty form.
 		if r.Method == http.MethodGet {
 			data := newTemplateData(r, app.SessionManager)
 			data["Form"] = loginForm{}
@@ -191,23 +185,22 @@ func (app *Application) login() http.HandlerFunc {
 		}
 
 		// Authenticate the user
-		_, err = app.AuthenticateLogin(r.Context(), form.Email, form.Password)
+		_, err = app.Queries.AuthenticateLogin(r.Context(), form.Email, form.Password)
 		if err != nil {
 			// Reload the page with failed login message
-			if errors.Is(err, ErrAuthFailed) {
+			if errors.Is(err, db.ErrAuthFailed) {
 				app.Flash(r, flashError, "login failed")
 
 				data := newTemplateData(r, app.SessionManager)
 				data["Form"] = form
-				// re-render the login page
-				if err := render.Page(w, http.StatusUnprocessableEntity, data, "login.tmpl"); err != nil {
+				// re-render the login page with the form data
+				if err := render.Page(w, http.StatusUnauthorized, data, "login.tmpl"); err != nil {
 					app.serverError(w, r, err)
 					return
 				}
-
 				return
 			}
-			// Any other error is a server error
+			// Any other error that isn't ErrAuthFailed is a server error
 			app.serverError(w, r, err)
 			return
 		}
@@ -222,6 +215,15 @@ func (app *Application) login() http.HandlerFunc {
 		// Set the authenticated session key
 		app.SessionManager.Put(r.Context(), "authenticated", true)
 		app.Flash(r, flashSuccess, "You are in!")
+
+		// Get the 'next=' query parameter for the next page
+		// to redirect the user to.
+		nextURL := r.URL.Query().Get("next")
+		app.Log.Debug("login next", "next", nextURL)
+		// Rederect to the homepage if there was no 'next=' query parameter.
+		if len(nextURL) == 0 {
+			nextURL = "/"
+		}
 
 		// Redirect to the next page.
 		http.Redirect(w, r, nextURL, http.StatusSeeOther)

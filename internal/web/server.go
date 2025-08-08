@@ -1,6 +1,7 @@
 package web
 
 import (
+	"encoding/gob"
 	"log/slog"
 	"net/http"
 	"reflect"
@@ -15,6 +16,11 @@ import (
 	"github.com/sglmr/gowebstart/internal/db"
 	"github.com/sglmr/gowebstart/internal/email"
 )
+
+func init() {
+	gob.Register(FlashMessage{})
+	gob.Register([]FlashMessage{})
+}
 
 type Application struct {
 	Log            *slog.Logger
