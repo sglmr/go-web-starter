@@ -1,12 +1,14 @@
 package web
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"runtime/debug"
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/justinas/nosurf"
+	"github.com/sglmr/gowebstart/internal/data"
 	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
@@ -14,7 +16,13 @@ type contextKey string
 
 //	Template functions
 
-// newTemplateData constructs a map of data to pass into templates
+// newTemplateData creates and returns a map of data for templates.
+//
+//   - CSRFToken
+//   - ISAuthenticated
+//   - Messages
+//   - UrlPath
+//   - Version
 func newTemplateData(r *http.Request, SessionManager *scs.SessionManager) map[string]any {
 	messages, ok := SessionManager.Pop(r.Context(), "messages").([]FlashMessage)
 	if !ok {
@@ -97,7 +105,7 @@ func clientError(w http.ResponseWriter, status int) {
 
 const (
 	isAuthenticatedContextKey = contextKey("isAuthenticated")
-	isAnonyousContextKey      = contextKey("isAnonymous")
+	userContextKey            = contextKey("user")
 )
 
 // isAuthenticated returns true when a user is authenticated. The function checks the
@@ -108,4 +116,18 @@ func isAuthenticated(r *http.Request) bool {
 		return false
 	}
 	return isAuthenticated
+}
+
+func (app *Application) contextSetUser(r *http.Request, user data.User) *http.Request {
+	ctx := context.WithValue(r.Context(), userContextKey, user)
+	ctx = context.WithValue(ctx, isAuthenticatedContextKey, true)
+	return r.WithContext(ctx)
+}
+
+func (app *Application) contextGetUser(r *http.Request) data.User {
+	user, ok := r.Context().Value(userContextKey).(data.User)
+	if !ok {
+		panic("missing user value in request context")
+	}
+	return user
 }

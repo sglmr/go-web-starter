@@ -3,7 +3,7 @@
 version: '3'
 
 vars:
-  MIGRATIONS_DIR: internal/db/migrations
+  MIGRATIONS_DIR: internal/data/migrations
 
 tasks:
 

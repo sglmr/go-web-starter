@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sglmr/gowebstart/assets"
-	"github.com/sglmr/gowebstart/internal/db"
+	"github.com/sglmr/gowebstart/internal/data"
 	"github.com/sglmr/gowebstart/internal/email"
 )
 
@@ -27,16 +27,19 @@ type Application struct {
 	DevMode        bool
 	Email          email.MailerInterface
 	SessionManager *scs.SessionManager
-	Queries        *db.Queries
+	Queries        *data.Queries
 	wg             *sync.WaitGroup
 }
 
-// NewApplication initializes a new Application struct
+// NewApplication creates and returns a new Application struct. It initializes
+// all the necessary components, such as the logger, email service, session
+// manager, and database queries. This function is the central point for
+// setting up the application's dependencies.
 func NewApplication(logger *slog.Logger,
 	devMode bool,
 	mailer email.MailerInterface,
 	sessionManager *scs.SessionManager,
-	queries *db.Queries,
+	queries *data.Queries,
 ) *Application {
 	return &Application{
 		Log:            logger,
@@ -48,18 +51,18 @@ func NewApplication(logger *slog.Logger,
 	}
 }
 
-// NewHandler creates a new htp.Handler with all the middlware and routes configured.
+// NewHandler creates and returns a new http.Handler with all the middleware
+// and routes configured.
 func (app *Application) NewHandler() http.Handler {
 	r := chi.NewRouter()
 
-	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(logRequestMW(app.Log))
 	r.Use(app.recoverPanicMW)
 	r.Use(trailingSlashMiddleware)
 	r.Use(secureHeadersMW)
 	r.Use(app.SessionManager.LoadAndSave)
-	r.Use(authenticateMW(app.SessionManager))
+	r.Use(app.authenticateMW)
 
 	// Set at imeout value on the request context
 	r.Use(middleware.Timeout(60 * time.Second))
@@ -96,7 +99,10 @@ func (app *Application) NewHandler() http.Handler {
 	return r
 }
 
-// Background executes a function in a background goroutine with proper error handling.
+// Background runs a function in a separate goroutine. It's designed for tasks
+// that can be executed asynchronously, such as sending emails or processing
+// data, without blocking the main application flow. It includes error handling
+// and panic recovery to ensure that background tasks don't crash the server.
 func (app *Application) Background(task func() error) {
 	// Increment waitgroup to track whether this background task is complete or not
 	app.wg.Add(1)

@@ -1,4 +1,4 @@
-package db
+package data
 
 import (
 	"context"
@@ -39,8 +39,6 @@ func TestAuthenticateLoginService(t *testing.T) {
 	switch {
 	case err != nil:
 		t.Errorf("expected to authenticate user and didn't: %v", err)
-	case user == nil:
-		t.Errorf("expected to get back a test user but didn't")
 	case user.ID != testUser.ID:
 		t.Errorf("wrong user returned %v, want %v", user.ID, testUser.ID)
 	}

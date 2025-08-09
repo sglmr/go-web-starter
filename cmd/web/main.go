@@ -18,7 +18,7 @@ import (
 	"github.com/alexedwards/scs/sqlite3store"
 	"github.com/alexedwards/scs/v2"
 	"github.com/lmittmann/tint"
-	"github.com/sglmr/gowebstart/internal/db"
+	"github.com/sglmr/gowebstart/internal/data"
 	"github.com/sglmr/gowebstart/internal/email"
 	"github.com/sglmr/gowebstart/internal/web"
 )
@@ -115,14 +115,14 @@ func runApp(
 	if *dbPath == "" {
 		*dbPath = "db.sqlite"
 	}
-	database, err := db.NewDatabaseConnection(*dbPath)
+	database, err := data.NewDatabaseConnection(*dbPath)
 	if err != nil {
 		return fmt.Errorf("error creating db: %w", err)
 	}
 	defer database.Close()
 
 	// Run migrations
-	if err := db.MigrateUp(*dbPath); err != nil {
+	if err := data.MigrateUp(*dbPath); err != nil {
 		return fmt.Errorf("error running migrations: %w", err)
 	}
 
@@ -146,7 +146,7 @@ func runApp(
 	sessionManager.Lifetime = 24 * time.Hour
 
 	// Set up the application struct
-	app := web.NewApplication(logger, *devMode, mailer, sessionManager, db.New(database))
+	app := web.NewApplication(logger, *devMode, mailer, sessionManager, data.New(database))
 
 	// Configure an http server
 	httpServer := &http.Server{

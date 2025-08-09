@@ -1,7 +1,8 @@
 package web
 
 import (
-	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -10,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alexedwards/scs/v2"
 	"github.com/justinas/nosurf"
 )
 
@@ -125,7 +125,9 @@ func csrfMW(next http.Handler) http.Handler {
 	return csrfHandler
 }
 
-// requireLoginMW checks if a user is authenticated, and if not, redirects them to the login page.
+// requireLoginMW is an HTTP middleware that enforces user authentication for protected routes.
+//
+// If the user is not authenticated, the middleware redirects to "/login/". The original request URI is appended to the "/login/" with a 'next' query parameter (ex. "/login/?next=/account/").
 func requireLoginMW() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -145,56 +147,90 @@ func requireLoginMW() func(http.Handler) http.Handler {
 	}
 }
 
-// authenticateMW sets a context isAuthenticatedContextKey to true if a user is authenticated
-// This middleware can also add user attributes to the request context to reduce queries for user or session data to the database.
-func authenticateMW(SessionManager *scs.SessionManager) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authenticated := SessionManager.GetBool(r.Context(), "authenticated")
-			if !authenticated {
+// authenticateMW is an HTTP middleware that checks for an authenticated user session
+// and makes the authentication status available in the request context. Storing session details
+// in the context about authentication reduces I/O operations against the database when checking
+// for authentication and common user data in tempates and routes/handlers.
+//
+// authenticateMW retrieves the "authenticated" status from the app.SessionManager.
+// If the user is authenticated, it creates a new request context with
+// `isAuthenticatedContextKey` set to `true` and updates the request.
+// This allows subsequent handlers in the chain to easily determine if the user is logged in.
+// This middleware does not restrict access. Access is restricted by the requireLoginMW().
+func (app *Application) authenticateMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Retrieve the authenticated user ID from the session manager. This
+		// key is set on the login() handler when a user successfully logs in.
+		// If the user did not log in, serve the next http request.
+		id := app.SessionManager.GetInt64(r.Context(), "authenticatedUserID")
+		if id == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Check that user exists in the database
+		user, err := app.Queries.GetUserByID(r.Context(), id)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				// TODO: This should probably be some other thing, like a Unauthorized error.
 				next.ServeHTTP(w, r)
 				return
 			}
+			app.serverError(w, r, err)
+		}
 
-			// Check that user exists in the database
-			// TODO with database: Not applicable without a users table
+		// If the user exists then create a new copy of the request with
+		//	- userContextKey = db.User object
+		// 	- isAuthenticatedContextKey = true
+		r = app.contextSetUser(r, user)
 
-			// If the user exists then create a new copy of the request
-			// with the isAuthenticatedContextKey set to true
-			ctx := context.WithValue(r.Context(), isAuthenticatedContextKey, true)
-			ctx = context.WithValue(ctx, isAnonyousContextKey, true)
-			r = r.WithContext(ctx)
-
-			// Call the next handler
-			next.ServeHTTP(w, r)
-		})
-	}
+		// Call the next handler
+		next.ServeHTTP(w, r)
+	})
 }
 
 // trailingSlashMiddleware redirects paths without a trailing slash to their trailing-slash equivalent.
-// it does not redirect to a trailing slash when:
-//  1. If the path is the root "/"
-//  2. If the path already has a trailing slash
-//  3. If the path starts with "/static/"
+//
+// A redirect is not issued when:
+//  1. Path is root "/"
+//  2. Path already has a trailing slash
+//  3. Path starts with "/static/"
 func trailingSlashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get the current request path.
 		path := r.URL.Path
 
-		// Check for the conditions where we should NOT redirect.
-		// 1. If the path is the root "/".
-		// 2. If the path already has a trailing slash.
-		// 3. If the path starts with "/static/".
-		if path != "/" && !strings.HasSuffix(path, "/") && !strings.HasPrefix(path, "/static/") {
-			// Construct the new URL with a trailing slash.
-			newPath := path + "/"
-
-			// Perform a 301 Permanent Redirect.
-			http.Redirect(w, r, newPath, http.StatusMovedPermanently)
-			return // Stop further processing.
+		// Serve the next http.Handler if no redirect is needed.
+		if !redirectWithSlash(path) {
+			next.ServeHTTP(w, r)
+			return
 		}
 
-		// If no redirect is needed, pass the request to the next handler.
-		next.ServeHTTP(w, r)
+		// Rebuild the URL with the trailing slash and the original query string (if any).
+		newURL := path + "/"
+		if r.URL.RawQuery != "" {
+			newURL += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, newURL, http.StatusMovedPermanently)
 	})
+}
+
+// redirectWithSlash returns true if a URL should be redirected
+// with a '/' suffix added and false otherwise. This function expects
+// a url.URL.Path which does not include query parameters.
+//
+// Redirects are skipped for paths that already end in "/"
+// and for anything served from "/static/..."
+func redirectWithSlash(path string) bool {
+	// Check for the conditions where we should NOT redirect.
+	switch {
+	// Path is root "/" or already has a trailing slash.
+	case strings.HasSuffix(path, "/"):
+		return false
+	// Path is "/static/"
+	case strings.HasPrefix(path, "/static/"):
+		return false
+	}
+
+	return true
 }

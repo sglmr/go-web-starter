@@ -3,7 +3,7 @@
 //   sqlc v1.29.0
 // source: user_queries.sql
 
-package db
+package data
 
 import (
 	"context"

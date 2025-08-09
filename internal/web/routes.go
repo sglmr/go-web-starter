@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sglmr/gowebstart/internal/db"
+	"github.com/sglmr/gowebstart/internal/data"
 	"github.com/sglmr/gowebstart/internal/render"
 	"github.com/sglmr/gowebstart/internal/validator"
 	"github.com/sglmr/gowebstart/internal/vcs"
@@ -183,10 +183,10 @@ func (app *Application) login() http.HandlerFunc {
 		}
 
 		// Authenticate the user
-		_, err = app.Queries.AuthenticateLogin(r.Context(), form.Email, form.Password)
+		user, err := app.Queries.AuthenticateLogin(r.Context(), form.Email, form.Password)
 		if err != nil {
 			// Reload the page with failed login message
-			if errors.Is(err, db.ErrAuthFailed) {
+			if errors.Is(err, data.ErrAuthFailed) {
 				app.Flash(r, flashError, "login failed")
 
 				data := newTemplateData(r, app.SessionManager)
@@ -211,7 +211,7 @@ func (app *Application) login() http.HandlerFunc {
 		}
 
 		// Set the authenticated session key
-		app.SessionManager.Put(r.Context(), "authenticated", true)
+		app.SessionManager.Put(r.Context(), "authenticatedUserID", user.ID)
 		app.Flash(r, flashSuccess, "You are in!")
 
 		// Get the 'next=' query parameter for the next page
@@ -243,7 +243,7 @@ func (app *Application) logout() http.HandlerFunc {
 			return
 		}
 
-		// Renew token after login to change the session ID
+		// Renew token after logout to change the session ID
 		err := app.SessionManager.RenewToken(r.Context())
 		if err != nil {
 			app.serverError(w, r, err)
@@ -251,7 +251,7 @@ func (app *Application) logout() http.HandlerFunc {
 		}
 
 		// Remove the authenticated session key
-		app.SessionManager.Remove(r.Context(), "authenticated")
+		app.SessionManager.Remove(r.Context(), "authenticatedUserID")
 		app.Flash(r, flashSuccess, "You've been logged out!")
 
 		// Redirect to the next page.

@@ -35,7 +35,10 @@ type Mailer struct {
 	from   string
 }
 
-// NewMailer initializes a new Mailer client for sending emails
+// NewMailer creates and returns a new Mailer for sending emails via SMTP. It
+// configures the SMTP client with the provided host, port, username, password,
+// and sender address. This function is the entry point for setting up the
+// email sending service.
 func NewMailer(host string, port int, username, password, from string) (*Mailer, error) {
 	client, err := mail.NewClient(host, mail.WithTimeout(defaultTimeout), mail.WithSMTPAuth(mail.SMTPAuthLogin), mail.WithPort(port), mail.WithUsername(username), mail.WithPassword(password))
 	if err != nil {
@@ -50,8 +53,10 @@ func NewMailer(host string, port int, username, password, from string) (*Mailer,
 	return mailer, nil
 }
 
-// Send an email to a recipient with data for a specified template name (patterns)
-//   - Reply to is optional and can be blank.
+// Send sends an email to a specified recipient. It uses templates to generate
+// the email's subject, plain-text body, and HTML body. The method handles all
+// aspects of email composition and sending, including retries in case of
+// failure.
 func (m *Mailer) Send(recipient string, replyTo string, data any, templates ...string) error {
 	// Create a slice from the patterns argument
 	for i := range templates {
@@ -130,7 +135,9 @@ func (m *Mailer) Send(recipient string, replyTo string, data any, templates ...s
 	return err
 }
 
-// SendWithAttachment is an enhanced version of the Send method that adds an attachment
+// SendWithAttachment sends an email with an attachment. It extends the Send
+// method by allowing a file to be attached to the email. This is useful for
+// sending reports, invoices, or other documents.
 func (m *Mailer) SendWithAttachment(
 	recipient, replyTo string,
 	data any,
@@ -222,21 +229,28 @@ type LogMailer struct {
 	log *slog.Logger
 }
 
-// NewLogMailer creates a new logMailer object for logging emails instead of sending them
+// NewLogMailer creates a new LogMailer that logs emails instead of sending them.
+// This is useful for development and testing environments where you don't want
+// to send real emails. It takes a logger as input and returns a LogMailer.
 func NewLogMailer(l *slog.Logger) *LogMailer {
 	return &LogMailer{
 		log: l,
 	}
 }
 
-// Send method takes the recipient email, template file name, and any dynamic data for the templates
-// as an any parameter.
+// Send logs the email details to the logger instead of sending it. This method
+// is part of the MailerInterface and is used by the LogMailer to simulate
+// sending an email. It logs the recipient, reply-to address, templates, and
+// data.
 func (m *LogMailer) Send(recipient string, replyTo string, data any, templates ...string) error {
 	m.log.Info("send email", "recipient", recipient, "replyTo", replyTo, "templates", templates, "data", data)
 	return nil
 }
 
-// SendWithAttachment is a version of the Send() method that supports attachments
+// SendWithAttachment logs the email details and attachment information to the
+// logger. This method is part of the MailerInterface and is used by the
+// LogMailer to simulate sending an email with an attachment. It logs the
+// recipient, reply-to address, templates, attachment filename, and data.
 func (m *LogMailer) SendWithAttachment(
 	recipient, replyTo string,
 	data any,

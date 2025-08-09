@@ -17,7 +17,7 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/alexedwards/scs/v2/memstore"
-	"github.com/sglmr/gowebstart/internal/db"
+	"github.com/sglmr/gowebstart/internal/data"
 	"github.com/sglmr/gowebstart/internal/email"
 )
 
@@ -43,7 +43,7 @@ func newTestApplication(t *testing.T) *Application {
 	sessionManager.Cookie.Secure = true
 
 	// Initialize a test database
-	database := db.NewTestDatabase(t, context.Background())
+	database := data.NewTestDatabase(t, context.Background())
 
 	testApp := Application{
 		Log:            logger,
@@ -51,7 +51,7 @@ func newTestApplication(t *testing.T) *Application {
 		Email:          email.NewLogMailer(logger),
 		SessionManager: sessionManager,
 		wg:             &sync.WaitGroup{},
-		Queries:        db.New(database),
+		Queries:        data.New(database),
 	}
 
 	return &testApp

@@ -1,23 +1,25 @@
 package validator
 
-// Validator is a type with helper functions for Validation
+// Validator is a struct that holds validation errors. It provides a set of
+// helper methods for performing validation checks and managing error messages.
 type Validator struct {
 	Errors map[string]string
 }
 
 //	Validator helpers
 
-// Valid returns 'true' when there are no errors in the map
+// Valid returns true if there are no validation errors.
 func (v Validator) Valid() bool {
 	return !v.HasErrors()
 }
 
-// HasErrors returns 'true' when there are errors in the map
+// HasErrors returns true if there are any validation errors.
 func (v Validator) HasErrors() bool {
 	return len(v.Errors) != 0
 }
 
-// AddError adds a message for a given key to the map of errors.
+// AddError adds a new error message to the validator's error map. It will
+// not overwrite an existing error.
 func (v *Validator) AddError(key, message string) {
 	if v.Errors == nil {
 		v.Errors = map[string]string{}
@@ -28,7 +30,7 @@ func (v *Validator) AddError(key, message string) {
 	}
 }
 
-// Check will add an error message if the the 'ok' argument is false.
+// Check adds an error message to the validator if a given condition is not met.
 func (v *Validator) Check(key string, ok bool, message string) {
 	if !ok {
 		v.AddError(key, message)

@@ -1,4 +1,4 @@
-package db
+package data
 
 import (
 	"context"
@@ -9,9 +9,10 @@ import (
 	"github.com/alexedwards/argon2id"
 )
 
-// ChangeUserPasswordService changes the password(hash) for a user.
-// It takes the context, email, and new plain-text password as input.
-// It returns an error if the password change fails.
+// ChangeUserPasswordService securely changes a user's password. It hashes the new
+// password using argon2id and updates the corresponding user record in the
+// database. It returns an error if the user is not found, if there's a problem
+// hashing the password, or if the database update fails.
 func (q *Queries) ChangeUserPasswordService(ctx context.Context, email, password string) error {
 	hashedPassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
@@ -30,9 +31,9 @@ func (q *Queries) ChangeUserPasswordService(ctx context.Context, email, password
 	return nil
 }
 
-// CreateUserService creates a new user in the database with a hashed password.
-// It takes the context, email, and plain-text password as input.
-// It returns the newly created user if successful, or an error if creation fails.
+// CreateUserService handles the creation of a new user. It takes an email and
+// password, hashes the password using argon2id, and persists the new user to the
+// database. It returns the created user object or an error if the process fails.
 func (q *Queries) CreateUserService(ctx context.Context, email, password string) (*User, error) {
 	hashedPassword, err := argon2id.CreateHash(password, argon2id.DefaultParams)
 	if err != nil {
@@ -56,10 +57,10 @@ var ErrAuthFailed = errors.New("authentication failed")
 // It takes the context, email, and password as input.
 // It returns the authenticated user if successful, or an error if authentication fails
 // (e.g., user not found, incorrect password, or other database errors).
-func (q *Queries) AuthenticateLogin(ctx context.Context, email, password string) (*User, error) {
+func (q *Queries) AuthenticateLogin(ctx context.Context, email, password string) (User, error) {
 	dummyHash, err := argon2id.CreateHash("dummyPassword", argon2id.DefaultParams)
 	if err != nil {
-		return nil, err
+		return *AnonymousUser, err
 	}
 
 	// Start with a dummy user to ensure a constant time comparison
@@ -67,12 +68,12 @@ func (q *Queries) AuthenticateLogin(ctx context.Context, email, password string)
 		PasswordHash: []byte(dummyHash),
 	}
 
-	// Query for the user to check if they exist
+	// Query for the user by email to check if they exist
 	foundUser, err := q.GetUserByEmail(ctx, email)
 	if err != nil {
 		// Return when the error is not sql.ErrNoRows
 		if !errors.Is(err, sql.ErrNoRows) {
-			return nil, err
+			return *AnonymousUser, err
 		}
 		// Continue for an ErrNoRows to avoid timing attacks.
 	} else {
@@ -82,12 +83,12 @@ func (q *Queries) AuthenticateLogin(ctx context.Context, email, password string)
 	// Compare the user's hashed password with the password
 	match, err := argon2id.ComparePasswordAndHash(password, string(user.PasswordHash))
 	if err != nil {
-		return nil, err
+		return *AnonymousUser, err
 	}
 	if !match {
-		return nil, ErrAuthFailed
+		return *AnonymousUser, ErrAuthFailed
 	}
 
 	// Return the user
-	return &user, nil
+	return user, nil
 }

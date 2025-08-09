@@ -13,32 +13,34 @@ import (
 
 var RgxEmail = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 
-// NotBlank returns true when a string is not empty.
+// NotBlank checks if a string is not empty or composed only of whitespace.
 func NotBlank(value string) bool {
 	return strings.TrimSpace(value) != ""
 }
 
-// MinRunes returns true when the string is longer than n runes.
+// MinRunes checks if a string contains at least a minimum number of runes (characters).
 func MinRunes(value string, n int) bool {
 	return utf8.RuneCountInString(value) >= n
 }
 
-// MaxRunes returns true when the string is <= n runes.
+// MaxRunes checks if a string contains no more than a maximum number of runes.
 func MaxRunes(value string, n int) bool {
 	return utf8.RuneCountInString(value) <= n
 }
 
-// Between returns true when the value is between (inclusive) two values.
+// Between checks if a value is within a specified range (inclusive). It's a
+// generic function that can be used with any ordered type, such as numbers or
+// strings.
 func Between[T constraints.Ordered](value, min, max T) bool {
 	return value >= min && value <= max
 }
 
-// Matches returns true when the string matches a given regular expression.
+// Matches checks if a string matches a given regular expression.
 func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
 }
 
-// In returns true when a value is in the safe list of values.
+// In checks if a value is present in a given list of allowed values.
 func In[T comparable](value T, safelist ...T) bool {
 	for i := range safelist {
 		if value == safelist[i] {
@@ -48,7 +50,8 @@ func In[T comparable](value T, safelist ...T) bool {
 	return false
 }
 
-// AllIn returns true if all the values are in the safelist of values.
+// AllIn checks if all values in a slice are present in a given list of allowed
+// values.
 func AllIn[T comparable](values []T, safelist ...T) bool {
 	for i := range values {
 		if !In(values[i], safelist...) {

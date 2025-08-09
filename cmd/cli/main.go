@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/alecthomas/kong"
-	"github.com/sglmr/gowebstart/internal/db"
+	"github.com/sglmr/gowebstart/internal/data"
 )
 
 var CLI struct {
@@ -36,12 +36,12 @@ func main() {
 
 func createUser(dsn, email, password string) {
 	// Connect to the database
-	database, err := db.NewDatabaseConnection(dsn)
+	database, err := data.NewDatabaseConnection(dsn)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer database.Close()
-	queries := db.New(database)
+	queries := data.New(database)
 
 	// Create a new user
 	user, err := queries.CreateUserService(context.Background(), email, password)
@@ -55,12 +55,12 @@ func createUser(dsn, email, password string) {
 
 func changePassword(dsn, email, password string) {
 	// Connect to the database
-	database, err := db.NewDatabaseConnection(dsn)
+	database, err := data.NewDatabaseConnection(dsn)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
 	defer database.Close()
-	queries := db.New(database)
+	queries := data.New(database)
 
 	// Change password
 	err = queries.ChangeUserPasswordService(context.Background(), email, password)
