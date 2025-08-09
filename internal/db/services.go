@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sglmr/gowebstart/internal/argon2id"
+	"github.com/alexedwards/argon2id"
 )
 
 // ChangeUserPasswordService changes the password(hash) for a user.
