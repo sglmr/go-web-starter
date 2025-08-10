@@ -53,7 +53,7 @@ func runApp(
 	// New Flag set
 	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
 
-	host := fs.String("host", "0.0.0.0", "Server host")
+	host := fs.String("host", "127.0.0.1", "Server host")
 	port := fs.String("port", "", "Server port")
 	devMode := fs.Bool("dev", false, "Development mode. Displays stack trace & more verbose logging")
 	sendEmail := fs.Bool("send-email", false, "Send live emails")
@@ -113,7 +113,7 @@ func runApp(
 		*dbPath = getenv("DB_PATH")
 	}
 	if *dbPath == "" {
-		*dbPath = "db.sqlite"
+		*dbPath = "tmp/db.sqlite"
 	}
 	database, err := data.NewDatabaseConnection(*dbPath)
 	if err != nil {

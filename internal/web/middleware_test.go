@@ -2,15 +2,95 @@ package web
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"gotest.tools/assert"
 )
+
+func TestStaticFileSystem_Open(t *testing.T) {
+	t.Parallel()
+
+	// 1. Define the mock filesystem for our tests using fstest.MapFS.
+	// This map represents the file structure we want to test against.
+	testFS := fstest.MapFS{
+		// A valid file that should be served.
+		"static/css/style.css": {Data: []byte("body {}")},
+		// A directory that contains an index.html file.
+		"static/js/index.html": {Data: []byte("<html></html>")},
+		// A file that is outside the allowed 'static' path.
+		"private/secret.txt": {Data: []byte("secret")},
+		// A directory that does NOT contain an index.html, to test directory listing prevention.
+		"static/img": {Mode: fs.ModeDir},
+	}
+
+	// 2. Instantiate the code you want to test.
+	sfs := staticFileSystem{fs: testFS}
+
+	// 3. Define the test cases.
+	testCases := []struct {
+		name    string // The name of the test case
+		path    string // The file path to request
+		wantErr error  // The expected error, if any
+		isDir   bool   // Whether we expect the result to be a directory
+	}{
+		{
+			name:    "should open a valid file",
+			path:    "static/css/style.css",
+			wantErr: nil,
+			isDir:   false,
+		},
+		{
+			name:    "should prevent access to files outside 'static' path",
+			path:    "private/secret.txt",
+			wantErr: fs.ErrNotExist,
+		},
+		{
+			name:    "should return an error for a non-existent file",
+			path:    "static/nonexistent.file",
+			wantErr: fs.ErrNotExist,
+		},
+		{
+			name:    "should allow access to a directory that contains index.html",
+			path:    "static/js",
+			wantErr: nil,
+			isDir:   true,
+		},
+		{
+			name:    "should prevent access to a directory without index.html",
+			path:    "static/img",
+			wantErr: fs.ErrNotExist,
+		},
+	}
+
+	// 4. Run the sub-tests.
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			file, err := sfs.Open(tc.path)
+			if file != nil {
+				defer file.Close()
+			}
+
+			// Check if the returned error matches the expected error.
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("sfs.Open(%q) error = %v; want %v", tc.path, err, tc.wantErr)
+			}
+
+			// If we didn't expect an error, check that the file is not nil.
+			if tc.wantErr == nil && file == nil {
+				t.Errorf("sfs.Open(%q) expected a file handle but got nil", tc.path)
+			}
+		})
+	}
+}
 
 func TestSecureHeadersMW(t *testing.T) {
 	t.Parallel()
@@ -112,14 +192,28 @@ func TestRecoverPanicMW(t *testing.T) {
 	}
 	body = bytes.TrimSpace(body)
 
-	want := "The server encountered a problem and could not process your request"
-	assert.Equal(t, string(body), want)
+	// Check the body contents
+	if got, want := "The server encountered a problem and could not process your request", string(body); got != want {
+		t.Errorf("response body missing %q", got)
+	}
+
+	// Check the status code
+	if got, want := rs.StatusCode, http.StatusInternalServerError; got != want {
+		t.Errorf("got response %v, wanted %v", got, want)
+	}
 
 	// Check the log message
 	logMsg := logBuffer.String()
-	assert.Check(t, strings.Contains(logMsg, "level=ERROR"))
-	assert.Check(t, strings.Contains(logMsg, "status=500"))
-	assert.Check(t, strings.Contains(logMsg, "error=Help!"))
+
+	if !strings.Contains(logMsg, "level=ERROR") {
+		t.Errorf("recover panic WM missing log level")
+	}
+	if !strings.Contains(logMsg, "status=500") {
+		t.Errorf("recover panic WM missing status code")
+	}
+	if !strings.Contains(logMsg, "error=Help!") {
+		t.Errorf("recover panic WM missing error message")
+	}
 }
 
 // TestTrailingSlashMiddleware tests the middleware for redirecting and passing requests.
@@ -266,5 +360,55 @@ func TestRedirectWithSlash(t *testing.T) {
 				t.Errorf("got '%v', want '%v'", got, want)
 			}
 		})
+	}
+}
+
+func TestCacheControlMW(t *testing.T) {
+	t.Parallel()
+
+	// --- 1. Setup ---
+
+	// Create a mock "next" handler that the middleware will call.
+	// This confirms that the middleware chain isn't broken.
+	mockNextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK) // Set a status code
+	})
+
+	// Define the max-age value for this test.
+	testMaxAge := "3600"
+
+	// Create an instance of our middleware.
+	middleware := cacheControlMW(testMaxAge)
+
+	// Wrap our mock handler with the middleware. This is the handler we will test.
+	handlerToTest := middleware(mockNextHandler)
+
+	// Create a new mock HTTP request.
+	req := httptest.NewRequest("GET", "http://testing.com/foo", nil)
+
+	// Create a ResponseRecorder, which acts as a mock ResponseWriter
+	// and captures all the changes made to the response.
+	rr := httptest.NewRecorder()
+
+	// --- 2. Execution ---
+
+	// Serve the HTTP request to our handler, which will in turn
+	// use our ResponseRecorder.
+	handlerToTest.ServeHTTP(rr, req)
+
+	// --- 3. Assertions ---
+
+	// Get the header that was set by the middleware.
+	header := rr.Header().Get("Cache-Control")
+	expectedHeader := fmt.Sprintf("public, max-age=%s", testMaxAge)
+
+	// Check if the header is what we expect.
+	if got, want := rr.Header().Get("Cache-Control"), fmt.Sprintf("public, max-age=%s", testMaxAge); got != want {
+		t.Errorf("handler returned wrong Cache-Control header: got %q want %q", header, expectedHeader)
+	}
+
+	// Check if the status code from the "next" handler was passed through.
+	if got, want := rr.Code, http.StatusOK; got != want {
+		t.Errorf("handler returned wrong status code: got %v want %v", got, want)
 	}
 }

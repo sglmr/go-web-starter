@@ -1,6 +1,6 @@
 module github.com/sglmr/gowebstart
 
-go 1.23.7
+go 1.24
 
 require (
 	github.com/alecthomas/kong v1.12.1
