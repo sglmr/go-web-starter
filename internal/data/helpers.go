@@ -12,8 +12,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// NewDatabase returns a new *sql.DB instance.
-// We name it NewDatabase to avoid a conflict with the sqlc-generated New function.
+// NewDatabaseConnection returns a new *sql.DB instance with
+// important sqlite settings set in the dsn.
 func NewDatabaseConnection(path string) (*sql.DB, error) {
 	var dsn string
 

@@ -12,8 +12,6 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-
-	"gotest.tools/assert"
 )
 
 func TestStaticFileSystem_Open(t *testing.T) {
@@ -118,27 +116,33 @@ func TestSecureHeadersMW(t *testing.T) {
 
 	// Check that the middleware has correctly set the Referrer-Policy
 	// header on the response.
-	want := "origin-when-cross-origin"
-	assert.Equal(t, rs.Header.Get("Referrer-Policy"), want)
+	if got, want := rs.Header.Get("Referrer-Policy"), "origin-when-cross-origin"; got != want {
+		t.Errorf("got Referrer-Policy %q, wanted %q", got, want)
+	}
 
 	// Check that the middleware has correctly set the X-Content-Type-Options
 	// header on the response.
-	want = "nosniff"
-	assert.Equal(t, rs.Header.Get("X-Content-Type-Options"), want)
+	if got, want := rs.Header.Get("X-Content-Type-Options"), "nosniff"; got != want {
+		t.Errorf("got X-Content-Type-Options %q, wanted %q", got, want)
+	}
 
 	// Check that the middleware has correctly set the X-Frame-Options header
 	// on the response.
-	want = "deny"
-	assert.Equal(t, rs.Header.Get("X-Frame-Options"), want)
+	if got, want := rs.Header.Get("X-Frame-Options"), "deny"; got != want {
+		t.Errorf("got X-Frame-Options %q, wanted %q", got, want)
+	}
 
 	// Check that the middleware has correctly set the X-XSS-Protection header
 	// on the response
-	want = "0"
-	assert.Equal(t, rs.Header.Get("X-XSS-Protection"), want)
+	if got, want := rs.Header.Get("X-XSS-Protection"), "0"; got != want {
+		t.Errorf("got X-XSS-Protection %q, wanted %q", got, want)
+	}
 
 	// Check that the middleware has correctly called the next handler in line
 	// and the response status code and body are as expected.
-	assert.Equal(t, rs.StatusCode, http.StatusOK)
+	if got, want := rs.StatusCode, http.StatusOK; got != want {
+		t.Errorf("got status %v, wanted %v", got, want)
+	}
 
 	defer rs.Body.Close()
 	body, err := io.ReadAll(rs.Body)
@@ -147,7 +151,9 @@ func TestSecureHeadersMW(t *testing.T) {
 	}
 	body = bytes.TrimSpace(body)
 
-	assert.Equal(t, string(body), "OK")
+	if got, want := string(body), "OK"; got != want {
+		t.Errorf("body should have been %q, not %v", want, got)
+	}
 }
 
 func TestRecoverPanicMW(t *testing.T) {
@@ -183,7 +189,9 @@ func TestRecoverPanicMW(t *testing.T) {
 
 	// Check that the middleware has correctly called the next handler in line
 	// and the response status code and body are as expected.
-	assert.Equal(t, rs.StatusCode, http.StatusInternalServerError)
+	if got, want := rs.StatusCode, http.StatusInternalServerError; got != want {
+		t.Errorf("got status %v, wanted %v", got, want)
+	}
 
 	defer rs.Body.Close()
 	body, err := io.ReadAll(rs.Body)

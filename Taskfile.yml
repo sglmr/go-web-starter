@@ -36,7 +36,7 @@ tasks:
   test:cover:
     desc: Run all tests and display coverage
     cmds:
-      - go test -v -race -buildvcs -coverprofile=/tmp/coverage.out ./...
+      - go test -race -buildvcs -coverprofile=/tmp/coverage.out ./...
       - go tool cover -html=/tmp/coverage.out
   
   audit:

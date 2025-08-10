@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sglmr/gowebstart/internal/assert"
 	"github.com/sglmr/gowebstart/internal/vcs"
 )
 
@@ -136,7 +135,9 @@ func TestLoginLogout(t *testing.T) {
 
 	// Test logout unauthorized without login
 	response := ts.get(t, "/logout/")
-	assert.Equal(t, http.StatusSeeOther, response.statusCode)
+	if got, want := response.statusCode, http.StatusSeeOther; got != want {
+		t.Errorf("got status %v, wanted %v", got, want)
+	}
 
 	// Test login page contents
 	response = ts.get(t, "/login/")
@@ -241,7 +242,6 @@ func TestLoginLogout(t *testing.T) {
 	if got, want := response.statusCode, http.StatusOK; got != want {
 		t.Fatalf("/logout/ GET statusCode was %v, want %v", got, want)
 	}
-	assert.Equal(t, http.StatusOK, response.statusCode)
 
 	// Try posting logout to log out
 	data = url.Values{}

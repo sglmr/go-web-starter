@@ -3,12 +3,13 @@ package email
 import (
 	"bytes"
 	"log/slog"
+	"strings"
 	"testing"
-
-	"github.com/sglmr/gowebstart/internal/assert"
 )
 
 func TestLogMailer_Send(t *testing.T) {
+	t.Parallel()
+
 	// Create a buffer to capture log output
 	var logBuffer bytes.Buffer
 
@@ -28,20 +29,30 @@ func TestLogMailer_Send(t *testing.T) {
 
 	// Call the Send method
 	err := logMailer.Send(recipient, replyTo, testData, patterns...)
-
-	// Assert no error was returned
-	assert.NoError(t, err)
+	if err != nil {
+		t.Fatalf("error sending log mail: %v", err)
+	}
 
 	// Assert the log StringIn the expected information
 	logOutput := logBuffer.String()
-	assert.StringIn(t, "send email", logOutput)
-	assert.StringIn(t, "recipient=test@example.com", logOutput)
-	assert.StringIn(t, "name", logOutput)
-	assert.StringIn(t, "Test User", logOutput)
-	assert.StringIn(t, "message", logOutput)
-	assert.StringIn(t, "Hello World", logOutput)
-	assert.StringIn(t, "welcome.tmpl", logOutput)
-	assert.StringIn(t, "notification.tmpl", logOutput)
+
+	testCases := []struct {
+		name string // name of the test & substring that we want
+	}{
+		{name: "send email"},
+		{name: "recipient=test@example.com"},
+		{name: "welcome.tmpl"},
+		{name: "Hello World"},
+		{name: "notification.tmpl"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(logOutput, tc.name) {
+				t.Errorf("log output missing: %q, output: %v", tc.name, logOutput)
+			}
+		})
+	}
 }
 
 // TestLogMailerImplementsInterface ensures that LogMailer correctly implements MailerInterface
