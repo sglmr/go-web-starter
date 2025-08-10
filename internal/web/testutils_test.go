@@ -219,3 +219,21 @@ func (ts *testServer) logout(t *testing.T) {
 		t.Fatal("could not log out")
 	}
 }
+
+// asserts that a function will panic with a specific value.
+func assertPanicsWithValue(t *testing.T, expectedValue any, f func()) {
+	t.Helper()
+
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("The code did not panic")
+			return
+		}
+		// Check if the recovered value matches the expected value.
+		if r != expectedValue {
+			t.Errorf("Panic value was incorrect: got %v, want %v", r, expectedValue)
+		}
+	}()
+	f()
+}

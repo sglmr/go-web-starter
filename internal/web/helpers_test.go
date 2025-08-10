@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -211,7 +212,7 @@ func TestClientError(t *testing.T) {
 	}
 }
 
-func TestContextSetUser(t *testing.T) {
+func TestContextSetUserGetuser(t *testing.T) {
 	t.Parallel()
 
 	app := newTestApplication(t)
@@ -231,4 +232,59 @@ func TestContextSetUser(t *testing.T) {
 	if got, want := gotUser.Email, user.Email; got != want {
 		t.Errorf("got email %q, wanted %q", got, want)
 	}
+}
+
+func TestContextGetUserMissingUser(t *testing.T) {
+	t.Parallel()
+
+	app := newTestApplication(t)
+	r, _ := http.NewRequest(http.MethodGet, "/", nil)
+
+	assertPanicsWithValue(t, "missing user value in request context", func() { app.contextGetUser(r) })
+}
+
+func addIsAuthenticatedContext(t *testing.T, ctx context.Context, isAuthenticated bool) context.Context {
+	t.Helper()
+	return context.WithValue(ctx, isAuthenticatedContextKey, isAuthenticated)
+}
+
+func TestIsAuthenticated(t *testing.T) {
+	t.Run("is authenticated", func(t *testing.T) {
+		r, err := http.NewRequest(http.MethodGet, "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := r.Context()
+		r = r.WithContext(addIsAuthenticatedContext(t, ctx, true))
+		got := isAuthenticated(r)
+		if !got {
+			t.Errorf("isAuthenticated should have been 'true'")
+		}
+	})
+
+	t.Run("is not authenticated", func(t *testing.T) {
+		r, err := http.NewRequest(http.MethodGet, "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := r.Context()
+		r = r.WithContext(addIsAuthenticatedContext(t, ctx, false))
+		got := isAuthenticated(r)
+
+		if got {
+			t.Errorf("isAuthenticated should have been 'false'")
+		}
+	})
+
+	t.Run("is not in context", func(t *testing.T) {
+		r, err := http.NewRequest(http.MethodGet, "/", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := isAuthenticated(r)
+
+		if got {
+			t.Errorf("isAuthenticated should have been 'false'")
+		}
+	})
 }
