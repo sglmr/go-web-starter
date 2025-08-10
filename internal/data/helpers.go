@@ -47,9 +47,9 @@ func NewDatabaseConnection(path string) (*sql.DB, error) {
 // NewTestDatabase creates a new in-memory sqlite database for testing.
 func NewTestDatabase(t *testing.T, ctx context.Context) *sql.DB {
 	// This connection string will be unique for each test that creates a database.
-	tempFile, err := os.CreateTemp("", fmt.Sprintf("%s_*", t.Name()))
+	tempFile, err := os.CreateTemp("", "")
 	if err != nil {
-		t.Fatalf("could not create temp databse file")
+		t.Fatalf("could not create temp database file")
 	}
 
 	dsn := fmt.Sprintf("%s?mode=memory&cache=shared", tempFile.Name())
