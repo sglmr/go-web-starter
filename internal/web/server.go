@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sglmr/gowebstart/assets"
 	"github.com/sglmr/gowebstart/internal/data"
