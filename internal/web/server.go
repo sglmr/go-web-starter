@@ -90,7 +90,7 @@ func (app *Application) NewHandler() http.Handler {
 	// This route requires login
 	r.Group(func(r chi.Router) {
 		r.Use(csrfMW)
-		r.Use(requireLoginMW())
+		r.Use(requireLoginMW)
 		r.Get("/login-required/", app.loginRequiredDemo())
 		r.Get("/logout/", app.logout())
 		r.Post("/logout/", app.logout())

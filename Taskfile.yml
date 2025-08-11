@@ -3,7 +3,10 @@
 version: '3'
 
 vars:
-  MIGRATIONS_DIR: internal/data/migrations
+  MIGRATIONS_DIR: internal/data/migrations/
+  MIGRATIONS_SOURCE_URL: file://{{.MIGRATIONS_DIR}}
+  DATABASE_PATH: tmp/db.sqlite
+  DATABASE_URL: sqlite3://{{.DATABASE_PATH}}
 
 tasks:
 
@@ -66,6 +69,12 @@ tasks:
     desc: Run the application with reloading on file changes
     cmds:
       - air
+
+  migrate:up:
+    desc: Perform up database MIGRATIONS_DIR
+    deps: [migrate:install]
+    cmds:
+      - migrate -source {{.MIGRATIONS_SOURCE_URL}} -database "{{.DATABASE_URL}}" up
 
   migrate:new:
     desc: Create a new migration file

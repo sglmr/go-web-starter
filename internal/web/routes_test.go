@@ -175,7 +175,7 @@ func TestLoginLogout(t *testing.T) {
 
 	// Logout should not display on the login page
 	if got, want := response.body, "/logout"; strings.Contains(got, want) {
-		t.Errorf("/login/ page should not have %q", want)
+		t.Errorf("/login/ page should not have a /logout/ link %q", want)
 	}
 
 	// Try login with fake username

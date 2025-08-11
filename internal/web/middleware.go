@@ -67,22 +67,16 @@ func cacheControlMW(age string) func(http.Handler) http.Handler {
 }
 
 func (app *Application) recoverPanicMW(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
-			if rvr := recover(); rvr != nil {
-				if rvr == http.ErrAbortHandler {
-					// we don't recover http.ErrAbortHandler so the response
-					// to the client is aborted, this should not be logged
-					panic(rvr)
-				}
-				app.serverError(w, r, fmt.Errorf("%s", rvr))
+			if err := recover(); err != nil {
+				w.Header().Set("Connection", "close")
+				app.serverError(w, r, fmt.Errorf("%s", err))
 			}
 		}()
 
 		next.ServeHTTP(w, r)
-	}
-
-	return http.HandlerFunc(fn)
+	})
 }
 
 // secureHeadersMW sets security headers for the whole application
@@ -117,34 +111,34 @@ func logRequestMW(logger *slog.Logger) func(http.Handler) http.Handler {
 // csrfMW protects specific routes against CSRF.
 func csrfMW(next http.Handler) http.Handler {
 	csrfHandler := nosurf.New(next)
+
 	csrfHandler.SetBaseCookie(http.Cookie{
 		HttpOnly: true,
 		Path:     "/",
 		Secure:   true,
 	})
+
 	return csrfHandler
 }
 
 // requireLoginMW is an HTTP middleware that enforces user authentication for protected routes.
 //
 // If the user is not authenticated, the middleware redirects to "/login/". The original request URI is appended to the "/login/" with a 'next' query parameter (ex. "/login/?next=/account/").
-func requireLoginMW() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Redirect to login if the user isn't authenticated
-			if !isAuthenticated(r) {
-				redirectURL := "/login/?next=" + url.QueryEscape(r.RequestURI)
-				http.Redirect(w, r, redirectURL, http.StatusSeeOther)
-				return
-			}
+func requireLoginMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Redirect to login if the user isn't authenticated
+		if !isAuthenticated(r) {
+			redirectURL := "/login/?next=" + url.QueryEscape(r.RequestURI)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
+			return
+		}
 
-			// Set cache control to no-store so that these pages aren't cached
-			w.Header().Add("Cache-Control", "no-store")
+		// Set cache control to no-store so that these pages aren't cached
+		w.Header().Add("Cache-Control", "no-store")
 
-			// Call the next handler
-			next.ServeHTTP(w, r)
-		})
-	}
+		// Call the next handler
+		next.ServeHTTP(w, r)
+	})
 }
 
 // authenticateMW is an HTTP middleware that checks for an authenticated user session
