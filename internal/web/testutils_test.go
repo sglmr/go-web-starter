@@ -157,6 +157,7 @@ func (ts *testServer) post(t *testing.T, path string, data url.Values) testRespo
 		t.Fatal(err)
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Referer", ts.URL+path)
 
 	// Send the POST request.
 	response, err := ts.Client().Do(request)
